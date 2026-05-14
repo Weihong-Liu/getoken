@@ -34,16 +34,16 @@ const plans: Plan[] = [
   {
     name: "免费",
     tagline: "适合体验、调试和低频个人项目",
-    price: "¥0",
+    price: "$0",
     unit: "/ 月",
     badge: "体验",
-    features: ["注册赠送 ¥1 额度", "基础模型可用", "调用日志保留 7 天", "社区支持"],
+    features: ["注册赠送 $1 额度", "基础模型可用", "调用日志保留 7 天", "社区支持"],
     cta: "立即开始",
   },
   {
     name: "标准",
     tagline: "适合个人开发者、工具站和小团队",
-    price: "¥0.5",
+    price: "$0.5",
     unit: "× 倍率起",
     badge: "推荐",
     highlight: true,
@@ -185,7 +185,7 @@ export default function PricingPage() {
           <div className="mb-8 text-center">
             <h2 data-reveal className="text-3xl font-semibold md:text-4xl">模型价格表</h2>
             <p data-reveal data-delay="100" className="mx-auto mt-3 max-w-2xl text-sm text-muted-foreground">
-              价格以「每百万 token / ¥」为单位,实际计费按响应体中的 token 消耗计算。
+              价格以「每百万 token / $」为单位,实际计费按响应体中的 token 消耗计算。
             </p>
           </div>
 
@@ -227,8 +227,8 @@ export default function PricingPage() {
                     <TableHead>模型</TableHead>
                     <TableHead>厂商</TableHead>
                     <TableHead>上下文</TableHead>
-                    <TableHead className="text-right">输入 (¥/1M)</TableHead>
-                    <TableHead className="text-right">输出 (¥/1M)</TableHead>
+                    <TableHead className="text-right">输入 ($/1M)</TableHead>
+                    <TableHead className="text-right">输出 ($/1M)</TableHead>
                     <TableHead>分组</TableHead>
                   </TableRow>
                 </TableHeader>

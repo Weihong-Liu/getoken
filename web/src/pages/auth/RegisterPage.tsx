@@ -21,7 +21,7 @@ export default function RegisterPage() {
     }
     setSending(true);
     try {
-      await apiFetch<void>("/auth/send-code", { method: "POST", body: JSON.stringify({ email }) });
+      await apiFetch<void>("/auth/send-code", { method: "POST", body: JSON.stringify({ email, purpose: "register" }) });
       toast.success("验证码已发送");
       setCooldown(60);
       const t = setInterval(() => {
@@ -45,13 +45,13 @@ export default function RegisterPage() {
     const fd = new FormData(e.currentTarget);
     const email = String(fd.get("email"));
     const password = String(fd.get("password"));
-    const code = String(fd.get("code"));
+    const emailCode = String(fd.get("code"));
     const inviteCode = String(fd.get("inviteCode") ?? "");
     setLoading(true);
     try {
       const res = await apiFetch<{ token: string }>("/auth/register", {
         method: "POST",
-        body: JSON.stringify({ email, password, code, inviteCode }),
+        body: JSON.stringify({ email, password, emailCode, inviteCode }),
       });
       setToken(res.token);
       toast.success("注册成功,欢迎加入");

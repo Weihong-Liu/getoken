@@ -5,9 +5,10 @@ export type User = {
   email: string;
   username: string;
   role: UserRole;
+  status: "active" | "banned";
   quota: number;
   usedQuota: number;
-  group: string;
+  groupId: number;
   inviteCode: string;
   createdAt: string;
 };
@@ -15,12 +16,14 @@ export type User = {
 export type Token = {
   id: number;
   name: string;
-  key: string;
+  // The plaintext key is only returned on creation. List endpoints expose `keyPrefix`.
+  key?: string;
+  keyPrefix: string;
   status: 1 | 0;
   remainQuota: number;
   unlimitedQuota: boolean;
-  expiredTime: number;
-  group: string;
+  expiredAt: string | null;
+  groupId: number;
   ipWhitelist: string;
   createdAt: string;
 };
@@ -33,6 +36,10 @@ export type LogEntry = {
   tokenName: string;
   promptTokens: number;
   completionTokens: number;
+  cachedTokens: number;
+  cacheCreationTokens: number;
+  reasoningEffort: string;       // "" | "low" | "medium" | "high" | "minimal" | "xhigh" | "max"
+  reasoningTokens: number;       // 实际推理思考的 token 数（仅 OpenAI 系列返回）
   quota: number;
   status: "success" | "error";
   latencyMs: number;
@@ -43,6 +50,15 @@ export type DashboardStats = {
   balance: number;
   usedToday: number;
   requestsToday: number;
+  series: { date: string; requests: number; tokens: number; cost: number }[];
+  topModels: { name: string; requests: number; tokens: number }[];
+};
+
+export type AdminStats = {
+  users: number;
+  tokens: number;
+  requestsToday: number;
+  revenueToday: number;
   series: { date: string; requests: number; tokens: number; cost: number }[];
   topModels: { name: string; requests: number; tokens: number }[];
 };
@@ -64,24 +80,11 @@ export type StatusInfo = {
 };
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "/api";
-const DEMO_SESSION_TOKEN = "demo-admin-session";
-const DEMO_USER_STORAGE_KEY = "getoken.demo-user";
-const DEMO_PASSWORD_STORAGE_KEY = "getoken.demo-password";
 
+// Convenience constants kept around so the LoginPage can pre-fill the bootstrap admin account
+// that the backend auto-creates from ADMIN_EMAIL / ADMIN_PASSWORD env on first boot.
 export const DEMO_LOGIN_EMAIL = "admin@getoken.dev";
 export const DEMO_LOGIN_PASSWORD = "Getoken123!";
-
-const defaultDemoUser: User = {
-  id: 1,
-  email: DEMO_LOGIN_EMAIL,
-  username: "Demo Admin",
-  role: "admin",
-  quota: 500000,
-  usedQuota: 18420,
-  group: "default",
-  inviteCode: "GETOKEN",
-  createdAt: "2026-01-01T00:00:00.000Z",
-};
 
 export class ApiError extends Error {
   status: number;
@@ -103,99 +106,16 @@ export function setToken(token: string | null) {
   else localStorage.removeItem("getoken.session");
 }
 
-function readDemoUser(): User {
-  if (typeof window === "undefined") return defaultDemoUser;
-  const raw = localStorage.getItem(DEMO_USER_STORAGE_KEY);
-  if (!raw) return defaultDemoUser;
-
-  try {
-    const parsed = JSON.parse(raw) as Partial<User>;
-    return { ...defaultDemoUser, ...parsed };
-  } catch {
-    return defaultDemoUser;
-  }
-}
-
-function writeDemoUser(user: User) {
-  if (typeof window === "undefined") return;
-  localStorage.setItem(DEMO_USER_STORAGE_KEY, JSON.stringify(user));
-}
-
-function readDemoPassword(): string {
-  if (typeof window === "undefined") return DEMO_LOGIN_PASSWORD;
-  return localStorage.getItem(DEMO_PASSWORD_STORAGE_KEY) ?? DEMO_LOGIN_PASSWORD;
-}
-
-function writeDemoPassword(password: string) {
-  if (typeof window === "undefined") return;
-  localStorage.setItem(DEMO_PASSWORD_STORAGE_KEY, password);
-}
-
-function isDemoSession(token: string | null) {
-  return token === DEMO_SESSION_TOKEN;
-}
-
-function parseJsonBody(init: RequestInit): Record<string, unknown> {
-  if (typeof init.body !== "string") return {};
-  try {
-    return JSON.parse(init.body) as Record<string, unknown>;
-  } catch {
-    return {};
-  }
-}
-
 export async function apiFetch<T = unknown>(
   path: string,
   init: RequestInit = {},
 ): Promise<T> {
   const token = getToken();
-  const method = (init.method ?? "GET").toUpperCase();
-  const payload = parseJsonBody(init);
   const headers = new Headers(init.headers);
   if (!headers.has("Content-Type") && init.body) {
     headers.set("Content-Type", "application/json");
   }
   if (token) headers.set("Authorization", `Bearer ${token}`);
-
-  if (path === "/auth/login" && method === "POST") {
-    const email = String(payload.email ?? "").trim().toLowerCase();
-    const password = String(payload.password ?? "");
-
-    if (email === DEMO_LOGIN_EMAIL.toLowerCase() && password === readDemoPassword()) {
-      return { token: DEMO_SESSION_TOKEN } as T;
-    }
-  }
-
-  if (isDemoSession(token)) {
-    if (path === "/user/self" && method === "GET") {
-      return readDemoUser() as T;
-    }
-
-    if (path === "/user/self" && method === "PUT") {
-      const currentUser = readDemoUser();
-      const nextUser: User = {
-        ...currentUser,
-        username:
-          typeof payload.username === "string" && payload.username.trim() !== ""
-            ? payload.username.trim()
-            : currentUser.username,
-      };
-      writeDemoUser(nextUser);
-      return nextUser as T;
-    }
-
-    if (path === "/user/password" && method === "PUT") {
-      const oldPassword = String(payload.old ?? "");
-      const nextPassword = String(payload.new ?? "");
-
-      if (oldPassword !== readDemoPassword()) {
-        throw new ApiError("原密码不正确", 400, { message: "原密码不正确" });
-      }
-
-      writeDemoPassword(nextPassword);
-      return {} as T;
-    }
-  }
 
   const res = await fetch(API_BASE + path, { ...init, headers });
   const ct = res.headers.get("content-type") ?? "";
@@ -212,8 +132,7 @@ export async function apiFetch<T = unknown>(
   if (
     typeof body === "object" &&
     body &&
-    "data" in (body as Record<string, unknown>) &&
-    !("items" in (body as Record<string, unknown>) && "data" in (body as Record<string, unknown>))
+    "data" in (body as Record<string, unknown>)
   ) {
     return (body as { data: T }).data;
   }
@@ -221,3 +140,124 @@ export async function apiFetch<T = unknown>(
 }
 
 export const fetcher = <T = unknown>(path: string) => apiFetch<T>(path);
+
+// ---------------------------------------------------------------------------
+// Admin / referral types
+// ---------------------------------------------------------------------------
+
+export type Page<T> = {
+  items: T[];
+  total: number;
+  page: number;
+  pageSize: number;
+};
+
+export type Referrals = {
+  inviteCode: string;
+  stats: { invitees: number; totalReward: number; monthInvitees: number };
+  items: Array<{
+    id: number;
+    email: string;
+    joinedAt: string;
+    totalSpend: number;
+    reward: number;
+  }>;
+};
+
+export type AdminUser = {
+  id: number;
+  email: string;
+  username: string;
+  role: "user" | "admin";
+  status: "active" | "banned";
+  groupId: number;
+  quota: number;
+  usedQuota: number;
+  inviteCode: string;
+  createdAt: string;
+};
+
+export type AdminUpstream = {
+  id: number;
+  name: string;
+  type: string;
+  baseUrl: string;
+  status: "online" | "degraded" | "offline";
+  priority: number;
+  weight: number;
+  latencyMs: number;
+  lastCheckAt: string | null;
+  note: string;
+  apiKeyMask: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type AdminModelMapping = {
+  id: number;
+  modelId: string;
+  vendor: string;
+  upstreamId: number;
+  upstreamModelName: string;
+  inputPrice: number;  // USD per 1M input tokens
+  outputPrice: number; // USD per 1M output tokens
+  cachedPrice: number; // USD per 1M cache-hit tokens (0 = fall back to inputPrice)
+  cacheCreationPrice: number; // USD per 1M cache-write tokens (0 = fall back to inputPrice)
+  context: number;
+  status: "online" | "offline";
+  allowedGroups: string; // CSV "default,vip"
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type AdminGroup = {
+  id: number;
+  name: string;
+  ratio: number;
+  note: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type AdminRedemption = {
+  id: number;
+  code: string;
+  amount: number;
+  status: "unused" | "used";
+  batchId: string;
+  usedBy: number | null;
+  usedAt: string | null;
+  createdAt: string;
+};
+
+export type AdminRedemptionBatch = {
+  batchId: string;
+  count: number;
+  codes: AdminRedemption[];
+};
+
+export type AdminAnnouncement = {
+  id: number;
+  title: string;
+  content: string;
+  level: "info" | "warning" | "danger";
+  status: "draft" | "published";
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type AdminSettings = Record<string, unknown>;
+
+export type AuditLog = {
+  id: number;
+  actorId: number;
+  targetUserId: number | null;
+  action: string;
+  target: string;
+  amount: number;
+  detail: string; // JSON string
+  ip: string;
+  createdAt: string;
+  actorEmail?: string;
+  targetEmail?: string;
+};

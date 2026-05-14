@@ -18,7 +18,7 @@ export default function ForgotPage() {
       return;
     }
     try {
-      await apiFetch<void>("/auth/send-code", { method: "POST", body: JSON.stringify({ email, scene: "reset" }) });
+      await apiFetch<void>("/auth/send-code", { method: "POST", body: JSON.stringify({ email, purpose: "forgot" }) });
       toast.success("验证码已发送");
       setCooldown(60);
       const t = setInterval(() => {
@@ -41,8 +41,8 @@ export default function ForgotPage() {
         method: "POST",
         body: JSON.stringify({
           email: String(fd.get("email")),
-          code: String(fd.get("code")),
-          password: String(fd.get("password")),
+          emailCode: String(fd.get("code")),
+          newPassword: String(fd.get("password")),
         }),
       });
       toast.success("密码已重置,请登录");

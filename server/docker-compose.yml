@@ -1,0 +1,46 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: getoken
+      POSTGRES_PASSWORD: getoken
+      POSTGRES_DB: getoken
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U getoken"]
+      interval: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      retries: 10
+
+  app:
+    build: .
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      HTTP_ADDR: ":3000"
+      ENV: production
+      DATABASE_URL: postgres://getoken:getoken@postgres:5432/getoken?sslmode=disable
+      REDIS_ADDR: redis:6379
+      JWT_SECRET: change-me-in-production-please
+      ADMIN_EMAIL: admin@getoken.dev
+      ADMIN_PASSWORD: Getoken123!
+      CORS_ORIGINS: http://localhost:5173
+    ports:
+      - "3000:3000"
+
+volumes:
+  pgdata:

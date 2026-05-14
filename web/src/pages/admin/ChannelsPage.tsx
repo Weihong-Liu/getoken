@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Plus, Power, PowerOff, RefreshCw, Trash2, Server } from "lucide-react";
+import useSWR from "swr";
+import { Plus, Power, PowerOff, Trash2, Server, Edit3, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -24,7 +25,8 @@ import {
 } from "@/components/ui/select";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { PageHeader } from "@/components/dashboard/PageHeader";
-import { demoAdminChannels, type AdminChannel } from "@/lib/mockAdmin";
+import { apiFetch, fetcher, type AdminUpstream } from "@/lib/api";
+import { timeAgo } from "@/lib/utils";
 
 const statusMap = {
   online: { label: "在线", variant: "success" as const },
@@ -32,123 +34,128 @@ const statusMap = {
   offline: { label: "离线", variant: "danger" as const },
 };
 
+const UPSTREAM_TYPES = ["openai", "anthropic", "gemini", "oneapi", "newapi", "sub2api"];
+
 export default function ChannelsPage() {
-  const [channels, setChannels] = useState<AdminChannel[]>(demoAdminChannels);
-  const [open, setOpen] = useState(false);
+  const { data, mutate } = useSWR<AdminUpstream[]>("/admin/upstreams", fetcher, {
+    revalidateOnFocus: false,
+  });
+  const [creating, setCreating] = useState(false);
+  const [editing, setEditing] = useState<AdminUpstream | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
-  function ping() {
-    toast.success("健康检测已启动,稍后刷新查看结果");
+  const upstreams = data ?? [];
+
+  async function toggleStatus(u: AdminUpstream) {
+    try {
+      await apiFetch(`/admin/upstreams/${u.id}`, {
+        method: "PUT",
+        body: JSON.stringify({
+          name: u.name,
+          baseUrl: u.baseUrl,
+          status: u.status === "offline" ? "online" : "offline",
+        }),
+      });
+      toast.success("已更新");
+      mutate();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "操作失败");
+    }
   }
 
-  function toggleStatus(id: number) {
-    setChannels((list) => list.map((c) => (c.id === id ? { ...c, status: c.status === "offline" ? "online" : "offline" } : c)));
+  async function onDelete(u: AdminUpstream) {
+    if (!confirm(`确认删除「${u.name}」?`)) return;
+    try {
+      await apiFetch(`/admin/upstreams/${u.id}`, { method: "DELETE" });
+      toast.success("已删除");
+      mutate();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "操作失败");
+    }
   }
 
-  function onDelete(id: number) {
-    if (!confirm("确认删除该渠道?")) return;
-    setChannels((list) => list.filter((c) => c.id !== id));
-    toast.success("已删除");
-  }
-
-  function onCreate(e: React.FormEvent<HTMLFormElement>) {
+  async function onCreate(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
-    setChannels((list) => [
-      ...list,
-      {
-        id: Math.max(0, ...list.map((c) => c.id)) + 1,
-        name: String(fd.get("name")),
-        type: String(fd.get("type")),
-        status: "online",
-        models: String(fd.get("models")).split(/[\s,]+/).filter(Boolean),
-        keys: String(fd.get("keys") ?? "").split(/\s+/).filter(Boolean).length || 1,
-        priority: Number(fd.get("priority") || 5),
-        weight: Number(fd.get("weight") || 5),
-        latencyMs: 0,
-      },
-    ]);
-    setOpen(false);
-    toast.success("渠道已创建");
+    setSubmitting(true);
+    try {
+      await apiFetch("/admin/upstreams", {
+        method: "POST",
+        body: JSON.stringify({
+          name: String(fd.get("name")),
+          type: String(fd.get("type") || "openai"),
+          baseUrl: String(fd.get("baseUrl")),
+          apiKey: String(fd.get("apiKey")),
+          status: String(fd.get("status") || "online"),
+          priority: Number(fd.get("priority") || 5),
+          weight: Number(fd.get("weight") || 5),
+          note: String(fd.get("note") || ""),
+        }),
+      });
+      toast.success("上游网关已创建");
+      setCreating(false);
+      mutate();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "创建失败");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function onEdit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (!editing) return;
+    const fd = new FormData(e.currentTarget);
+    setSubmitting(true);
+    const body: Record<string, unknown> = {
+      name: String(fd.get("name")),
+      type: String(fd.get("type") || editing.type),
+      baseUrl: String(fd.get("baseUrl")),
+      status: String(fd.get("status") || editing.status),
+      priority: Number(fd.get("priority") || editing.priority),
+      weight: Number(fd.get("weight") || editing.weight),
+      note: String(fd.get("note") || ""),
+    };
+    const apiKey = String(fd.get("apiKey") || "");
+    if (apiKey) body.apiKey = apiKey;
+    try {
+      await apiFetch(`/admin/upstreams/${editing.id}`, {
+        method: "PUT",
+        body: JSON.stringify(body),
+      });
+      toast.success("已保存");
+      setEditing(null);
+      mutate();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "保存失败");
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (
     <>
       <PageHeader
-        title="渠道管理"
-        description="管理上游 API 渠道、多 key 轮询与健康检测。"
+        title="上游网关"
+        description="管理上游 API 网关 (Upstream),配置接入类型、密钥与调度策略。"
         actions={
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={ping}><RefreshCw />健康检测</Button>
-            <Dialog open={open} onOpenChange={setOpen}>
-              <DialogTrigger asChild>
-                <Button><Plus />新增渠道</Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>新增渠道</DialogTitle>
-                  <DialogDescription>每个渠道对应一组上游 API key,系统会自动轮询。</DialogDescription>
-                </DialogHeader>
-                <form onSubmit={onCreate} className="space-y-4">
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-2">
-                      <Label htmlFor="name">名称</Label>
-                      <Input id="name" name="name" required placeholder="比如:Anthropic 官方" />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>类型</Label>
-                      <Select name="type" defaultValue="openai">
-                        <SelectTrigger><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="openai">OpenAI</SelectItem>
-                          <SelectItem value="anthropic">Anthropic</SelectItem>
-                          <SelectItem value="gemini">Gemini</SelectItem>
-                          <SelectItem value="azure">Azure OpenAI</SelectItem>
-                          <SelectItem value="deepseek">DeepSeek</SelectItem>
-                          <SelectItem value="moonshot">Moonshot</SelectItem>
-                          <SelectItem value="qwen">Qwen / DashScope</SelectItem>
-                          <SelectItem value="siliconflow">SiliconFlow</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="models">支持模型 (逗号或换行分隔)</Label>
-                    <textarea
-                      id="models"
-                      name="models"
-                      rows={2}
-                      className="w-full rounded-md border bg-background px-3 py-2 text-sm font-mono"
-                      placeholder="claude-sonnet-4-6, claude-opus-4-7"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="keys">API Keys (每行一个)</Label>
-                    <textarea
-                      id="keys"
-                      name="keys"
-                      rows={4}
-                      className="w-full rounded-md border bg-background px-3 py-2 text-sm font-mono"
-                      placeholder={`sk-xxxxxxxxxxxxxxxxx\nsk-yyyyyyyyyyyyyyyyy`}
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-2">
-                      <Label htmlFor="priority">优先级 (数字越大越优先)</Label>
-                      <Input id="priority" name="priority" type="number" defaultValue={5} />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="weight">权重</Label>
-                      <Input id="weight" name="weight" type="number" defaultValue={5} />
-                    </div>
-                  </div>
-                  <DialogFooter>
-                    <Button type="button" variant="outline" onClick={() => setOpen(false)}>取消</Button>
-                    <Button type="submit">创建</Button>
-                  </DialogFooter>
-                </form>
-              </DialogContent>
-            </Dialog>
-          </div>
+          <Dialog open={creating} onOpenChange={setCreating}>
+            <DialogTrigger asChild>
+              <Button><Plus />新增上游</Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>新增上游网关</DialogTitle>
+                <DialogDescription>每个上游对应一个 API 接入点 (如 OpenAI / Anthropic / 自建 OneAPI 等)。</DialogDescription>
+              </DialogHeader>
+              <UpstreamForm
+                submitting={submitting}
+                onCancel={() => setCreating(false)}
+                onSubmit={onCreate}
+                requireKey
+              />
+            </DialogContent>
+          </Dialog>
         }
       />
 
@@ -158,46 +165,42 @@ export default function ChannelsPage() {
             <TableRow>
               <TableHead>名称</TableHead>
               <TableHead>类型</TableHead>
+              <TableHead>Base URL</TableHead>
+              <TableHead>密钥</TableHead>
               <TableHead>状态</TableHead>
-              <TableHead>Keys</TableHead>
               <TableHead>优先级 / 权重</TableHead>
-              <TableHead>支持模型</TableHead>
               <TableHead className="text-right">延迟</TableHead>
+              <TableHead>最近检测</TableHead>
               <TableHead className="text-right">操作</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {channels.length === 0 && (
+            {upstreams.length === 0 && (
               <TableRow>
-                <TableCell colSpan={8}>
+                <TableCell colSpan={9}>
                   <div className="py-10 text-center text-sm text-muted-foreground">
                     <Server className="mx-auto size-8 mb-2 opacity-50" />
-                    还没有渠道,点击右上角添加。
+                    还没有上游网关,点击右上角添加。
                   </div>
                 </TableCell>
               </TableRow>
             )}
-            {channels.map((c) => (
-              <TableRow key={c.id}>
-                <TableCell className="font-medium">{c.name}</TableCell>
-                <TableCell><Badge variant="secondary" className="font-mono text-xs">{c.type}</Badge></TableCell>
-                <TableCell><Badge variant={statusMap[c.status].variant}>{statusMap[c.status].label}</Badge></TableCell>
-                <TableCell className="tabular-nums">{c.keys}</TableCell>
-                <TableCell className="text-xs text-muted-foreground tabular-nums">{c.priority} / {c.weight}</TableCell>
-                <TableCell>
-                  <div className="flex flex-wrap gap-1 max-w-xs">
-                    {c.models.slice(0, 3).map((m) => (
-                      <Badge key={m} variant="outline" className="font-mono text-[10px]">{m}</Badge>
-                    ))}
-                    {c.models.length > 3 && <Badge variant="outline" className="text-[10px]">+{c.models.length - 3}</Badge>}
-                  </div>
-                </TableCell>
-                <TableCell className="text-right tabular-nums text-sm">{c.latencyMs > 0 ? `${c.latencyMs}ms` : "—"}</TableCell>
+            {upstreams.map((u) => (
+              <TableRow key={u.id}>
+                <TableCell className="font-medium">{u.name}</TableCell>
+                <TableCell><Badge variant="secondary" className="font-mono text-xs">{u.type}</Badge></TableCell>
+                <TableCell><code className="text-xs font-mono text-muted-foreground">{u.baseUrl}</code></TableCell>
+                <TableCell><code className="text-xs font-mono text-muted-foreground">{u.apiKeyMask || "—"}</code></TableCell>
+                <TableCell><Badge variant={statusMap[u.status].variant}>{statusMap[u.status].label}</Badge></TableCell>
+                <TableCell className="text-xs text-muted-foreground tabular-nums">{u.priority} / {u.weight}</TableCell>
+                <TableCell className="text-right tabular-nums text-sm">{u.latencyMs > 0 ? `${u.latencyMs}ms` : "—"}</TableCell>
+                <TableCell className="text-xs text-muted-foreground">{u.lastCheckAt ? timeAgo(u.lastCheckAt) : "—"}</TableCell>
                 <TableCell className="text-right">
-                  <Button variant="ghost" size="icon" onClick={() => toggleStatus(c.id)}>
-                    {c.status === "offline" ? <Power /> : <PowerOff />}
+                  <Button variant="ghost" size="icon" onClick={() => setEditing(u)} title="编辑"><Edit3 /></Button>
+                  <Button variant="ghost" size="icon" onClick={() => toggleStatus(u)} title={u.status === "offline" ? "启用" : "禁用"}>
+                    {u.status === "offline" ? <Power /> : <PowerOff />}
                   </Button>
-                  <Button variant="ghost" size="icon" onClick={() => onDelete(c.id)}>
+                  <Button variant="ghost" size="icon" onClick={() => onDelete(u)} title="删除">
                     <Trash2 />
                   </Button>
                 </TableCell>
@@ -206,6 +209,99 @@ export default function ChannelsPage() {
           </TableBody>
         </Table>
       </Card>
+
+      <Dialog open={!!editing} onOpenChange={(v) => { if (!v) setEditing(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>编辑上游 {editing?.name}</DialogTitle>
+            <DialogDescription>API Key 留空表示不修改。</DialogDescription>
+          </DialogHeader>
+          {editing && (
+            <UpstreamForm
+              submitting={submitting}
+              onCancel={() => setEditing(null)}
+              onSubmit={onEdit}
+              initial={editing}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </>
+  );
+}
+
+function UpstreamForm({
+  submitting,
+  onCancel,
+  onSubmit,
+  initial,
+  requireKey,
+}: {
+  submitting: boolean;
+  onCancel: () => void;
+  onSubmit: (e: React.FormEvent<HTMLFormElement>) => void;
+  initial?: AdminUpstream;
+  requireKey?: boolean;
+}) {
+  return (
+    <form onSubmit={onSubmit} className="space-y-4">
+      <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-2">
+          <Label htmlFor="name">名称</Label>
+          <Input id="name" name="name" required defaultValue={initial?.name} placeholder="比如:OpenAI 官方" />
+        </div>
+        <div className="space-y-2">
+          <Label>类型</Label>
+          <Select name="type" defaultValue={initial?.type ?? "openai"}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {UPSTREAM_TYPES.map((t) => (
+                <SelectItem key={t} value={t}>{t}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="baseUrl">Base URL</Label>
+        <Input id="baseUrl" name="baseUrl" required defaultValue={initial?.baseUrl} placeholder="https://api.openai.com/v1" />
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="apiKey">API Key {requireKey ? "" : "(留空不修改)"}</Label>
+        <Input id="apiKey" name="apiKey" type="password" required={requireKey} placeholder={initial?.apiKeyMask ?? "sk-..."} />
+      </div>
+      <div className="grid grid-cols-3 gap-3">
+        <div className="space-y-2">
+          <Label>状态</Label>
+          <Select name="status" defaultValue={initial?.status ?? "online"}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="online">在线</SelectItem>
+              <SelectItem value="degraded">缓慢</SelectItem>
+              <SelectItem value="offline">离线</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="priority">优先级</Label>
+          <Input id="priority" name="priority" type="number" defaultValue={initial?.priority ?? 5} />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="weight">权重</Label>
+          <Input id="weight" name="weight" type="number" defaultValue={initial?.weight ?? 5} />
+        </div>
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="note">备注</Label>
+        <Input id="note" name="note" defaultValue={initial?.note} placeholder="可选" />
+      </div>
+      <DialogFooter>
+        <Button type="button" variant="outline" onClick={onCancel}>取消</Button>
+        <Button type="submit" disabled={submitting}>
+          {submitting && <Loader2 className="size-4 animate-spin" />}
+          保存
+        </Button>
+      </DialogFooter>
+    </form>
   );
 }
