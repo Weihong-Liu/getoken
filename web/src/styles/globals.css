@@ -1,0 +1,215 @@
+@import "tailwindcss";
+@plugin "tailwindcss-animate";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  --color-brand-50: #f0fde6;
+  --color-brand-100: #ddf9c4;
+  --color-brand-200: #baf095;
+  --color-brand-300: #8de45a;
+  --color-brand-400: #6abe39;
+  --color-brand-500: #4e9c25;
+  --color-brand-600: #3c7e1a;
+  --color-brand-700: #2f6516;
+  --color-brand-800: #265117;
+  --color-brand-900: #1f4315;
+
+  --color-success: #10b981;
+  --color-warning: #f59e0b;
+  --color-danger: #ef4444;
+}
+
+:root {
+  --background: #fbfbf8;
+  --foreground: #111313;
+  --muted: #f1f3ef;
+  --muted-foreground: #68716e;
+  --card: #ffffff;
+  --card-foreground: #111313;
+  --border: #dfe4df;
+  --input: #dfe4df;
+  --ring: #4e9c25;
+  --accent: #f0fde6;
+  --accent-foreground: #111313;
+  --primary: #3c7e1a;
+  --primary-foreground: #ffffff;
+  --secondary: #f0fde6;
+  --secondary-foreground: #1f4315;
+}
+
+.dark {
+  --background: #070808;
+  --foreground: #f5f7f6;
+  --muted: #111414;
+  --muted-foreground: #9aa3a0;
+  --card: #0d1010;
+  --card-foreground: #f5f7f6;
+  --border: #202727;
+  --input: #202727;
+  --ring: #8de45a;
+  --accent: #0f1f0a;
+  --accent-foreground: #f5f7f6;
+  --primary: #6abe39;
+  --primary-foreground: #0a1f06;
+  --secondary: #0f1f0a;
+  --secondary-foreground: #ddf9c4;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+}
+
+* {
+  border-color: var(--border);
+}
+
+html {
+  -webkit-font-smoothing: antialiased;
+  scroll-behavior: smooth;
+  overflow-x: hidden;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  font-feature-settings: "rlig" 1, "calt" 1;
+  overflow-x: hidden;
+}
+
+::selection {
+  background-color: color-mix(in srgb, var(--primary) 30%, transparent);
+}
+
+.grid-bg {
+  background-image:
+    linear-gradient(to right, color-mix(in srgb, var(--border) 42%, transparent) 1px, transparent 1px),
+    linear-gradient(to bottom, color-mix(in srgb, var(--border) 42%, transparent) 1px, transparent 1px),
+    linear-gradient(180deg, color-mix(in srgb, var(--primary) 10%, transparent), transparent 45%);
+  background-size: 56px 56px, 56px 56px, 100% 100%;
+  mask-image: linear-gradient(180deg, black, transparent 86%);
+  -webkit-mask-image: linear-gradient(180deg, black, transparent 86%);
+}
+
+.dot-bg {
+  background-image: radial-gradient(color-mix(in srgb, var(--border) 80%, transparent) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+.glow {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--primary) 14%, transparent), transparent 72%);
+}
+
+.particle-field {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  mask-image: linear-gradient(180deg, black 0%, black 72%, transparent 100%);
+  -webkit-mask-image: linear-gradient(180deg, black 0%, black 72%, transparent 100%);
+}
+
+.particle {
+  position: absolute;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--primary) 72%, white);
+  box-shadow:
+    0 0 18px color-mix(in srgb, var(--primary) 62%, transparent),
+    0 0 42px color-mix(in srgb, #8de45a 32%, transparent);
+  opacity: 0;
+  transform: translate3d(0, 0, 0) scale(0.72);
+  animation: particle-drift 12s ease-in-out infinite;
+}
+
+.particle > span {
+  position: absolute;
+  inset: -5px;
+  border-radius: inherit;
+  border: 1px solid color-mix(in srgb, var(--primary) 24%, transparent);
+  animation: particle-ring 2.8s ease-out infinite;
+}
+
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes shimmer {
+  from { background-position: -200% 0; }
+  to { background-position: 200% 0; }
+}
+
+@keyframes particle-drift {
+  0%, 100% {
+    opacity: 0;
+    transform: translate3d(0, 0, 0) scale(0.72);
+  }
+  18%, 72% {
+    opacity: 0.82;
+  }
+  50% {
+    opacity: 1;
+    transform: translate3d(var(--particle-x, 18px), var(--particle-y, -32px), 0) scale(1);
+  }
+}
+
+@keyframes particle-ring {
+  from {
+    opacity: 0.42;
+    transform: scale(0.35);
+  }
+  to {
+    opacity: 0;
+    transform: scale(1.8);
+  }
+}
+
+.animate-fade-up { animation: fade-up 0.6s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.animate-fade-in { animation: fade-in 0.5s ease-out both; }
+
+[data-reveal] { opacity: 0; }
+[data-reveal].is-visible { animation: fade-up 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+[data-reveal][data-delay="100"].is-visible { animation-delay: 100ms; }
+[data-reveal][data-delay="200"].is-visible { animation-delay: 200ms; }
+[data-reveal][data-delay="300"].is-visible { animation-delay: 300ms; }
+[data-reveal][data-delay="400"].is-visible { animation-delay: 400ms; }
+[data-reveal][data-delay="500"].is-visible { animation-delay: 500ms; }
+
+.scrollbar-thin { scrollbar-width: thin; }
+.scrollbar-thin::-webkit-scrollbar { width: 6px; height: 6px; }
+.scrollbar-thin::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .particle,
+  .particle > span,
+  [data-reveal].is-visible {
+    animation: none;
+  }
+
+  .particle {
+    opacity: 0.34;
+  }
+}
