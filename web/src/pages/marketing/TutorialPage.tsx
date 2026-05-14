@@ -35,7 +35,7 @@ const sections: Section[] = [
     title: "5 分钟跑通第一个请求",
     intro: "注册账号 → 充值 → 创建 API Key → 把 base_url 指到 GeToken,就可以直接复用现有 OpenAI/Claude SDK。",
     steps: [
-      { title: "注册账号", desc: "邮箱注册即送 ¥1 额度,免充值即可联调全部模型。" },
+      { title: "注册账号", desc: "邮箱注册即送 $1 额度,免充值即可联调全部模型。" },
       { title: "创建 API Key", desc: "进入「控制台 → API Keys」,点击新建,记下 sk-getoken- 开头的密钥。" },
       { title: "修改 base_url", desc: "把上游 base_url 替换为 https://api.getoken.cc,鉴权头保持不变。" },
       { title: "发起调用", desc: "选好 model 参数(见模型列表),按原生 SDK 用法直接请求即可。" },
@@ -155,7 +155,7 @@ print(msg.content[0].text)`,
     intro: "GeToken 采用余额按量扣费 + 模型独立倍率,余额永久有效,不限调用次数。",
     steps: [
       { title: "查看倍率", desc: "在定价页或控制台「用量」中查看各模型最新的输入 / 输出单价。" },
-      { title: "充值", desc: "进入「控制台 → 充值」,支持微信、支付宝、USDT,最低 ¥10 起。" },
+      { title: "充值", desc: "进入「控制台 → 充值」,支持微信、支付宝、USDT,最低 $10 起。" },
       { title: "邀请返利", desc: "在「邀请」页生成专属链接,被邀请人消费的 5% 会自动返到你的余额。" },
       { title: "导出账单", desc: "「用量 → 导出 CSV」可拉取按日 / 按模型聚合的消费明细。" },
     ],

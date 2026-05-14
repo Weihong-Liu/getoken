@@ -1,6 +1,6 @@
 import { useState } from "react";
 import useSWR from "swr";
-import { Plus, Copy, Eye, EyeOff, Power, PowerOff, Trash2, KeyRound, Loader2 } from "lucide-react";
+import { Plus, Copy, Power, PowerOff, Trash2, KeyRound, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -27,23 +27,17 @@ import {
 } from "@/components/ui/table";
 import { PageHeader } from "@/components/dashboard/PageHeader";
 import { apiFetch, fetcher, type Token } from "@/lib/api";
-import { demoTokens } from "@/lib/mock";
-import { copyToClipboard, formatCurrency, maskKey, timeAgo } from "@/lib/utils";
+import { copyToClipboard, formatCurrency, timeAgo } from "@/lib/utils";
 
 export default function TokensPage() {
   const { data, mutate } = useSWR<Token[]>("/token", fetcher, {
-    fallbackData: demoTokens,
     revalidateOnFocus: false,
   });
-  const [revealed, setRevealed] = useState<Record<number, boolean>>({});
   const [creating, setCreating] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [newKey, setNewKey] = useState<string | null>(null);
 
   const tokens = data ?? [];
-
-  function toggleReveal(id: number) {
-    setRevealed((m) => ({ ...m, [id]: !m[id] }));
-  }
 
   async function onCopy(key: string) {
     await copyToClipboard(key);
@@ -76,18 +70,19 @@ export default function TokensPage() {
     const fd = new FormData(e.currentTarget);
     setSubmitting(true);
     try {
-      await apiFetch("/token", {
+      const res = await apiFetch<Token>("/token", {
         method: "POST",
         body: JSON.stringify({
           name: String(fd.get("name")),
-          remainQuota: Number(fd.get("remainQuota") || 0),
+          remainQuota: String(fd.get("remainQuota") || "0"),
           unlimitedQuota: fd.get("unlimitedQuota") === "on",
-          expiredTime: Number(fd.get("expiredTime") || 0),
+          expiredAt: Number(fd.get("expiredTime") || 0),
           ipWhitelist: String(fd.get("ipWhitelist") || ""),
         }),
       });
-      toast.success("创建成功");
+      toast.success("创建成功，请妥善保存密钥（仅此一次显示）");
       setCreating(false);
+      if (res.key) setNewKey(res.key);
       mutate();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "创建失败");
@@ -118,7 +113,7 @@ export default function TokensPage() {
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-2">
-                    <Label htmlFor="remainQuota">额度 (¥)</Label>
+                    <Label htmlFor="remainQuota">额度 ($)</Label>
                     <Input id="remainQuota" name="remainQuota" type="number" step="0.01" placeholder="0 表示无限" />
                   </div>
                   <div className="space-y-2">
@@ -156,6 +151,24 @@ export default function TokensPage() {
         }
       />
 
+      <Dialog open={!!newKey} onOpenChange={(v) => { if (!v) setNewKey(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>密钥已创建</DialogTitle>
+            <DialogDescription>请立刻保存下面的密钥，离开此页面后将无法再次查看。</DialogDescription>
+          </DialogHeader>
+          <div className="flex items-center gap-2 rounded-md bg-muted/40 p-3">
+            <code className="flex-1 break-all text-xs font-mono">{newKey}</code>
+            <Button size="sm" variant="outline" onClick={() => newKey && onCopy(newKey)}>
+              <Copy /> 复制
+            </Button>
+          </div>
+          <DialogFooter>
+            <Button onClick={() => setNewKey(null)}>我已保存</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <Card>
         <Table>
           <TableHeader>
@@ -183,17 +196,9 @@ export default function TokensPage() {
               <TableRow key={t.id}>
                 <TableCell className="font-medium">{t.name}</TableCell>
                 <TableCell>
-                  <div className="flex items-center gap-1.5 group">
-                    <code className="text-xs font-mono">{revealed[t.id] ? t.key : maskKey(t.key)}</code>
-                    <Button variant="ghost" size="icon" className="size-6 opacity-0 group-hover:opacity-100" onClick={() => toggleReveal(t.id)}>
-                      {revealed[t.id] ? <EyeOff /> : <Eye />}
-                    </Button>
-                    <Button variant="ghost" size="icon" className="size-6 opacity-0 group-hover:opacity-100" onClick={() => onCopy(t.key)}>
-                      <Copy />
-                    </Button>
-                  </div>
+                  <code className="text-xs font-mono text-muted-foreground">{t.keyPrefix}…</code>
                 </TableCell>
-                <TableCell>{t.unlimitedQuota ? <Badge variant="secondary">无限</Badge> : formatCurrency(t.remainQuota / 1000)}</TableCell>
+                <TableCell>{t.unlimitedQuota ? <Badge variant="secondary">无限</Badge> : formatCurrency(Number(t.remainQuota))}</TableCell>
                 <TableCell>
                   {t.status === 1 ? <Badge variant="success">启用</Badge> : <Badge variant="danger">已禁</Badge>}
                 </TableCell>

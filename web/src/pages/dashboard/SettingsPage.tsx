@@ -130,7 +130,7 @@ export default function SettingsPage() {
             </CardHeader>
             <CardContent className="space-y-4 max-w-lg">
               {[
-                { id: "low_balance", label: "余额不足", desc: "当余额低于 ¥10 时提醒我" },
+                { id: "low_balance", label: "余额不足", desc: "当余额低于 $10 时提醒我" },
                 { id: "anomaly", label: "异常调用", desc: "出现持续 5xx 或速率异常时提醒" },
                 { id: "weekly", label: "每周报表", desc: "每周一邮件发送上周用量摘要" },
                 { id: "product", label: "产品更新", desc: "新模型、新功能与重要变更" },

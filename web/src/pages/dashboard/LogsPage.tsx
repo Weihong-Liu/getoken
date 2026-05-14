@@ -22,7 +22,6 @@ import {
 } from "@/components/ui/table";
 import { PageHeader } from "@/components/dashboard/PageHeader";
 import { fetcher, type LogEntry } from "@/lib/api";
-import { demoLogs } from "@/lib/mock";
 import { formatCurrency, formatNumber } from "@/lib/utils";
 
 const PAGE_SIZE = 15;
@@ -33,13 +32,15 @@ export default function LogsPage() {
   const [status, setStatus] = useState("all");
   const [page, setPage] = useState(1);
 
-  const { data } = useSWR<{ items: LogEntry[]; total: number }>("/log?limit=200", fetcher, {
-    fallbackData: { items: demoLogs, total: demoLogs.length },
+  const { data } = useSWR<{ items: LogEntry[]; total: number }>("/log?pageSize=200", fetcher, {
     revalidateOnFocus: false,
   });
 
   const items = data?.items ?? [];
-  const models = useMemo(() => Array.from(new Set(items.map((l) => l.modelName))), [items]);
+  const models = useMemo(
+    () => Array.from(new Set(items.map((l) => l.modelName).filter(Boolean))),
+    [items],
+  );
 
   const filtered = useMemo(() => {
     return items.filter((l) => {
@@ -54,13 +55,17 @@ export default function LogsPage() {
   const pageItems = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   function exportCsv() {
-    const headers = ["time", "model", "token", "promptTokens", "completionTokens", "cost", "latencyMs", "status"];
+    const headers = ["time", "model", "token", "promptTokens", "cachedTokens", "cacheCreationTokens", "completionTokens", "reasoningEffort", "reasoningTokens", "cost", "latencyMs", "status"];
     const rows = filtered.map((l) => [
       l.createdAt,
       l.modelName,
       l.tokenName,
       l.promptTokens,
+      l.cachedTokens,
+      l.cacheCreationTokens,
       l.completionTokens,
+      l.reasoningEffort,
+      l.reasoningTokens,
       l.quota,
       l.latencyMs,
       l.status,
@@ -118,8 +123,11 @@ export default function LogsPage() {
               <TableHead>时间</TableHead>
               <TableHead>模型</TableHead>
               <TableHead>Key</TableHead>
-              <TableHead className="text-right">输入</TableHead>
+              <TableHead className="text-right" title="未命中缓存的输入">输入</TableHead>
+              <TableHead className="text-right" title="缓存命中（折扣价）">缓存</TableHead>
+              <TableHead className="text-right" title="写入缓存的 token">写缓存</TableHead>
               <TableHead className="text-right">输出</TableHead>
+              <TableHead title="思考强度 + 推理消耗 token">思考</TableHead>
               <TableHead className="text-right">消耗</TableHead>
               <TableHead className="text-right">延迟</TableHead>
               <TableHead>状态</TableHead>
@@ -128,7 +136,7 @@ export default function LogsPage() {
           <TableBody>
             {pageItems.length === 0 && (
               <TableRow>
-                <TableCell colSpan={8}><div className="py-10 text-center text-sm text-muted-foreground">没有匹配的日志</div></TableCell>
+                <TableCell colSpan={11}><div className="py-10 text-center text-sm text-muted-foreground">没有匹配的日志</div></TableCell>
               </TableRow>
             )}
             {pageItems.map((l) => (
@@ -139,7 +147,21 @@ export default function LogsPage() {
                 <TableCell className="font-mono text-xs">{l.modelName}</TableCell>
                 <TableCell className="text-sm">{l.tokenName}</TableCell>
                 <TableCell className="text-right tabular-nums text-sm">{formatNumber(l.promptTokens)}</TableCell>
+                <TableCell className="text-right tabular-nums text-sm text-muted-foreground">{l.cachedTokens > 0 ? formatNumber(l.cachedTokens) : "—"}</TableCell>
+                <TableCell className="text-right tabular-nums text-sm text-muted-foreground">{l.cacheCreationTokens > 0 ? formatNumber(l.cacheCreationTokens) : "—"}</TableCell>
                 <TableCell className="text-right tabular-nums text-sm">{formatNumber(l.completionTokens)}</TableCell>
+                <TableCell>
+                  {l.reasoningEffort || l.reasoningTokens > 0 ? (
+                    <div className="flex items-center gap-1.5">
+                      {l.reasoningEffort && <Badge variant="outline" className="text-[10px]">{l.reasoningEffort}</Badge>}
+                      {l.reasoningTokens > 0 && (
+                        <span className="text-xs tabular-nums text-muted-foreground">{formatNumber(l.reasoningTokens)}</span>
+                      )}
+                    </div>
+                  ) : (
+                    <span className="text-xs text-muted-foreground">—</span>
+                  )}
+                </TableCell>
                 <TableCell className="text-right tabular-nums text-sm">{formatCurrency(l.quota)}</TableCell>
                 <TableCell className="text-right tabular-nums text-sm">{l.latencyMs}ms</TableCell>
                 <TableCell>

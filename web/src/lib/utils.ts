@@ -12,7 +12,7 @@ export function formatNumber(n: number): string {
   return n.toString();
 }
 
-export function formatCurrency(n: number, currency = "¥"): string {
+export function formatCurrency(n: number, currency = "$"): string {
   return `${currency}${n.toFixed(2)}`;
 }
 

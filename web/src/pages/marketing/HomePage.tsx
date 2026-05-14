@@ -231,8 +231,8 @@ export default function HomePage() {
                       <Wallet className="size-4 text-success" />
                       账户余额
                     </div>
-                    <div className="mt-4 text-3xl font-semibold tabular-nums">¥ 2,486.38</div>
-                    <div className="mt-2 text-xs text-muted-foreground">今日消耗 ¥37.82 · 余额永久有效</div>
+                    <div className="mt-4 text-3xl font-semibold tabular-nums">$ 2,486.38</div>
+                    <div className="mt-2 text-xs text-muted-foreground">今日消耗 $37.82 · 余额永久有效</div>
                   </div>
 
                   <div className="rounded-lg border bg-muted/30 p-4">

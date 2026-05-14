@@ -11,10 +11,10 @@ export default defineConfig({
     },
   },
   server: {
-    port: 5173,
+    port: 38838,
     proxy: {
       "/api": {
-        target: process.env.API_PROXY_TARGET ?? "http://localhost:3000",
+        target: process.env.API_PROXY_TARGET ?? "http://localhost:38883",
         changeOrigin: true,
       },
     },

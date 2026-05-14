@@ -22,8 +22,8 @@ import ChannelsPage from "@/pages/admin/ChannelsPage";
 import ModelsPage from "@/pages/admin/ModelsPage";
 import GroupsPage from "@/pages/admin/GroupsPage";
 import AdminLogsPage from "@/pages/admin/AdminLogsPage";
+import AdminAuditPage from "@/pages/admin/AdminAuditPage";
 import RedemptionPage from "@/pages/admin/RedemptionPage";
-import OrdersPage from "@/pages/admin/OrdersPage";
 import AnnouncementsPage from "@/pages/admin/AnnouncementsPage";
 import SystemSettingsPage from "@/pages/admin/SystemSettingsPage";
 import NotFoundPage from "@/pages/NotFoundPage";
@@ -76,8 +76,8 @@ export const router = createBrowserRouter([
       { path: "models", element: <ModelsPage /> },
       { path: "groups", element: <GroupsPage /> },
       { path: "logs", element: <AdminLogsPage /> },
+      { path: "audit", element: <AdminAuditPage /> },
       { path: "redemption", element: <RedemptionPage /> },
-      { path: "orders", element: <OrdersPage /> },
       { path: "announcements", element: <AnnouncementsPage /> },
       { path: "settings", element: <SystemSettingsPage /> },
     ],

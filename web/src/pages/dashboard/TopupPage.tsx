@@ -21,7 +21,8 @@ export default function TopupPage() {
 
   async function onRedeem(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    const fd = new FormData(e.currentTarget);
+    const form = e.currentTarget; // capture before await — React releases synthetic events
+    const fd = new FormData(form);
     const code = String(fd.get("code") ?? "").trim();
     if (!code) return;
     setRedeeming(true);
@@ -30,8 +31,8 @@ export default function TopupPage() {
         method: "POST",
         body: JSON.stringify({ code }),
       });
-      toast.success(`兑换成功!当前余额 ¥${res.balance.toFixed(2)}`);
-      (e.currentTarget as HTMLFormElement).reset();
+      toast.success(`兑换成功!当前余额 $${Number(res.balance).toFixed(2)}`);
+      form.reset();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "兑换失败");
     } finally {
@@ -41,7 +42,7 @@ export default function TopupPage() {
 
   async function onCreateOrder() {
     if (amount < 1) {
-      toast.error("最低充值金额为 ¥1");
+      toast.error("最低充值金额为 $1");
       return;
     }
     setPaying(true);
@@ -86,7 +87,7 @@ export default function TopupPage() {
                       amount === p ? "border-primary bg-primary/5" : "bg-card",
                     )}
                   >
-                    <div className="text-lg font-semibold">¥{p}</div>
+                    <div className="text-lg font-semibold">${p}</div>
                     {p >= 100 && (
                       <Badge variant="default" className="absolute -top-2 right-1 text-[10px] py-0">+{p === 100 ? 5 : p === 300 ? 20 : 40}</Badge>
                     )}
@@ -133,7 +134,7 @@ export default function TopupPage() {
 
               <Button onClick={onCreateOrder} size="lg" className="w-full" disabled={paying}>
                 {paying && <Loader2 className="size-4 animate-spin" />}
-                立即充值 ¥{amount}
+                立即充值 ${amount}
               </Button>
               <p className="text-xs text-muted-foreground text-center">
                 * 充值即视为同意服务条款。如有问题请联系客服。
