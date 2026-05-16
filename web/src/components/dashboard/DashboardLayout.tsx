@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useState } from "react";
 import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
 import {
   LayoutDashboard,
@@ -20,7 +20,7 @@ import {
   ChevronsLeft,
   ChevronsRight,
 } from "lucide-react";
-import { Logo } from "@/components/marketing/Logo";
+import { Logo, LogoMark } from "@/components/marketing/Logo";
 import { ThemeToggle } from "@/components/marketing/ThemeToggle";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -66,7 +66,7 @@ export function DashboardLayout({ variant = "user" }: { variant?: "user" | "admi
   const [collapsed, setCollapsed] = useState(false);
 
   return (
-    <div className="min-h-screen bg-muted/20">
+    <div className="dashboard-shell min-h-screen bg-background text-foreground">
       <Sidebar nav={nav} collapsed={collapsed} variant={variant} onClose={() => setOpen(false)} mobileOpen={open} />
 
       <div
@@ -75,7 +75,7 @@ export function DashboardLayout({ variant = "user" }: { variant?: "user" | "admi
           collapsed ? "lg:pl-[68px]" : "lg:pl-60",
         )}
       >
-        <header className="sticky top-0 z-30 h-14 border-b bg-background/80 backdrop-blur">
+        <header className="sticky top-0 z-30 h-16 border-b border-border/70 bg-background/80 backdrop-blur-xl">
           <div className="h-full px-4 md:px-6 flex items-center justify-between gap-3">
             <Button variant="ghost" size="icon" className="lg:hidden" onClick={() => setOpen((v) => !v)}>
               {open ? <X /> : <Menu />}
@@ -85,7 +85,10 @@ export function DashboardLayout({ variant = "user" }: { variant?: "user" | "admi
             </Button>
 
             <div className="hidden md:flex flex-1 items-center gap-3 text-sm text-muted-foreground">
-              {variant === "admin" && <span className="inline-flex items-center gap-1 text-warning"><Shield className="size-3.5" /> 管理后台</span>}
+              <span className="inline-flex items-center gap-2 rounded-full border bg-card/70 px-3 py-1 shadow-sm">
+                {variant === "admin" ? <Shield className="size-3.5 text-warning" /> : <LayoutDashboard className="size-3.5 text-primary" />}
+                {variant === "admin" ? "管理后台" : "用户控制台"}
+              </span>
             </div>
 
             <div className="flex items-center gap-2">
@@ -123,7 +126,7 @@ export function DashboardLayout({ variant = "user" }: { variant?: "user" | "admi
           </div>
         </header>
 
-        <main className="flex-1 p-4 md:p-8 max-w-7xl w-full mx-auto">
+        <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-[1440px] w-full mx-auto">
           <Outlet />
         </main>
       </div>
@@ -151,42 +154,45 @@ function Sidebar({
       )}
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-40 flex flex-col bg-card border-r transition-all",
+          "fixed inset-y-0 left-0 z-40 flex flex-col border-r border-border/75 bg-card/95 shadow-2xl shadow-black/5 backdrop-blur-xl transition-all",
           "w-60",
           collapsed && "lg:w-[68px]",
           mobileOpen ? "translate-x-0" : "-translate-x-full",
           "lg:translate-x-0",
         )}
       >
-        <div className={cn("h-14 flex items-center border-b px-4", collapsed && "lg:px-3 lg:justify-center")}>
+        <div className={cn("h-16 flex items-center border-b border-border/70 px-4", collapsed && "lg:px-3 lg:justify-center")}>
           {collapsed ? (
-            <Link to="/" className="grid place-items-center size-8 rounded-md bg-gradient-to-br from-brand-500 to-brand-700 text-white">
-              <svg viewBox="0 0 32 32" className="size-4" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round">
-                <path d="M10 12h12M10 16h12M10 20h8" />
-              </svg>
+            <Link to="/" aria-label="GeToken">
+              <LogoMark className="size-9" />
             </Link>
           ) : (
             <Logo />
           )}
         </div>
-        <nav className="flex-1 overflow-y-auto p-2 scrollbar-thin">
+        <nav className="flex-1 overflow-y-auto p-3 scrollbar-thin">
           {nav.map((item) => (
-            <NavItemRow key={item.to} item={item} collapsed={collapsed} onNavigate={onClose} variant={variant} />
+            <NavItemRow key={item.to} item={item} collapsed={collapsed} onNavigate={onClose} />
           ))}
         </nav>
         {!collapsed && (
-          <div className="border-t p-4">
-            <p className="text-xs text-muted-foreground">
-              {variant === "admin" ? "管理员模式" : "需要帮助?"}
-            </p>
+          <div className="border-t border-border/70 p-4">
+            <div className="rounded-lg border bg-muted/30 p-3">
+              <p className="text-xs text-muted-foreground">
+                {variant === "admin" ? "当前权限" : "运行状态"}
+              </p>
+              <p className="mt-1 text-sm font-medium">
+                {variant === "admin" ? "全局管理" : "服务正常"}
+              </p>
+            </div>
             {variant !== "admin" && (
               <a
                 href="https://docs.getoken.cc"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="mt-1 text-sm text-primary hover:underline"
+                className="mt-3 inline-flex text-sm text-primary hover:underline"
               >
-                查看使用文档 →
+                查看使用文档
               </a>
             )}
           </div>
@@ -200,12 +206,10 @@ function NavItemRow({
   item,
   collapsed,
   onNavigate,
-  variant,
 }: {
   item: NavItem;
   collapsed: boolean;
   onNavigate: () => void;
-  variant: "user" | "admin";
 }) {
   const location = useLocation();
   const Icon = item.icon;
@@ -213,27 +217,23 @@ function NavItemRow({
   const isRoot = item.to === "/dashboard" || item.to === "/admin";
   const active = isRoot ? location.pathname === item.to : location.pathname.startsWith(item.to);
 
-  const content = (
+  return (
     <NavLink
       to={item.to}
       end={isRoot}
       onClick={onNavigate}
       className={cn(
-        "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
+        "relative mb-1 flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-all",
         active
-          ? "bg-primary/10 text-primary font-medium"
-          : "text-muted-foreground hover:text-foreground hover:bg-accent",
+          ? "bg-primary/10 text-primary font-medium shadow-sm ring-1 ring-primary/10"
+          : "text-muted-foreground hover:text-foreground hover:bg-accent/70",
         collapsed && "lg:justify-center lg:px-2",
       )}
       title={collapsed ? item.label : undefined}
     >
+      {active && <span className="absolute left-0 top-2 bottom-2 w-0.5 rounded-r-full bg-primary" />}
       <Icon className="size-4 shrink-0" />
       <span className={cn(collapsed && "lg:hidden")}>{item.label}</span>
     </NavLink>
   );
-
-  // suppress unused variant lint
-  void variant;
-
-  return content as ReactNode;
 }

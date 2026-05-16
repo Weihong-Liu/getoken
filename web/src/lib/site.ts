@@ -9,6 +9,7 @@ export const site = {
   chat: "https://chat.getoken.cc",
   github: "https://github.com/",
   nav: [
+    { label: "首页", href: "/" },
     { label: "可用性检测", href: "/status" },
     { label: "定价方案", href: "/pricing" },
     { label: "使用教程", href: "/tutorial" },

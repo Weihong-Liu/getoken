@@ -19,10 +19,14 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@
 import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/dashboard/PageHeader";
 import { apiFetch, fetcher, type AdminGroup } from "@/lib/api";
+import { demoAdminGroups } from "@/lib/mock";
 import { timeAgo } from "@/lib/utils";
 
 export default function GroupsPage() {
-  const { data, mutate } = useSWR<AdminGroup[]>("/admin/groups", fetcher, { revalidateOnFocus: false });
+  const { data, mutate } = useSWR<AdminGroup[]>("/admin/groups", fetcher, {
+    fallbackData: demoAdminGroups,
+    revalidateOnFocus: false,
+  });
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<AdminGroup | null>(null);
   const [submitting, setSubmitting] = useState(false);

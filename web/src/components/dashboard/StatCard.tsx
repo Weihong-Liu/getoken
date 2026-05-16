@@ -25,17 +25,17 @@ export function StatCard({
           : "bg-primary/10 text-primary";
 
   return (
-    <Card className="p-5">
+    <Card className="dashboard-panel overflow-hidden p-5">
       <div className="flex items-center justify-between">
-        <span className="text-sm text-muted-foreground">{title}</span>
+        <span className="text-sm font-medium text-muted-foreground">{title}</span>
         {Icon && (
-          <span className={cn("grid place-items-center size-8 rounded-md", toneClass)}>
+          <span className={cn("grid place-items-center size-9 rounded-lg shadow-sm", toneClass)}>
             <Icon className="size-4" />
           </span>
         )}
       </div>
-      <div className="mt-2 text-2xl font-semibold tabular-nums">{value}</div>
-      {hint && <div className="mt-1 text-xs text-muted-foreground">{hint}</div>}
+      <div className="mt-4 text-2xl font-semibold tabular-nums tracking-normal">{value}</div>
+      {hint && <div className="mt-2 text-xs leading-5 text-muted-foreground">{hint}</div>}
     </Card>
   );
 }

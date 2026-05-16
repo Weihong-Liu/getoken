@@ -35,7 +35,9 @@
   --ring: #4e9c25;
   --accent: #f0fde6;
   --accent-foreground: #111313;
+  --primary-start: #baf095;
   --primary: #3c7e1a;
+  --primary-end: #14b8a6;
   --primary-foreground: #ffffff;
   --secondary: #f0fde6;
   --secondary-foreground: #1f4315;
@@ -53,10 +55,157 @@
   --ring: #8de45a;
   --accent: #0f1f0a;
   --accent-foreground: #f5f7f6;
+  --primary-start: #baf095;
   --primary: #6abe39;
+  --primary-end: #14b8a6;
   --primary-foreground: #0a1f06;
   --secondary: #0f1f0a;
   --secondary-foreground: #ddf9c4;
+}
+
+:root[data-accent="cyan"] {
+  --border: #d8e6e5;
+  --input: #d8e6e5;
+  --ring: #0891b2;
+  --accent: #ecfeff;
+  --primary-start: #a5f3fc;
+  --primary: #0891b2;
+  --primary-end: #14b8a6;
+  --primary-foreground: #ffffff;
+  --secondary: #cffafe;
+  --secondary-foreground: #164e63;
+}
+
+.dark[data-accent="cyan"] {
+  --background: #06090a;
+  --muted: #0f1516;
+  --card: #0b1011;
+  --border: #1b2b2e;
+  --input: #1b2b2e;
+  --ring: #67e8f9;
+  --accent: #071a1e;
+  --primary-start: #a5f3fc;
+  --primary: #22d3ee;
+  --primary-end: #2dd4bf;
+  --primary-foreground: #041417;
+  --secondary: #0d2429;
+  --secondary-foreground: #cffafe;
+}
+
+:root[data-accent="indigo"] {
+  --border: #dde2f2;
+  --input: #dde2f2;
+  --ring: #4f46e5;
+  --accent: #eef2ff;
+  --primary-start: #c7d2fe;
+  --primary: #4f46e5;
+  --primary-end: #06b6d4;
+  --primary-foreground: #ffffff;
+  --secondary: #e0e7ff;
+  --secondary-foreground: #312e81;
+}
+
+.dark[data-accent="indigo"] {
+  --background: #07080e;
+  --muted: #11131d;
+  --card: #0d0f18;
+  --border: #23263a;
+  --input: #23263a;
+  --ring: #a5b4fc;
+  --accent: #11152d;
+  --primary-start: #c7d2fe;
+  --primary: #818cf8;
+  --primary-end: #22d3ee;
+  --primary-foreground: #090b1c;
+  --secondary: #151936;
+  --secondary-foreground: #e0e7ff;
+}
+
+:root[data-accent="violet"] {
+  --border: #e5ddf4;
+  --input: #e5ddf4;
+  --ring: #7c3aed;
+  --accent: #f5f3ff;
+  --primary-start: #ddd6fe;
+  --primary: #7c3aed;
+  --primary-end: #ec4899;
+  --primary-foreground: #ffffff;
+  --secondary: #ede9fe;
+  --secondary-foreground: #4c1d95;
+}
+
+.dark[data-accent="violet"] {
+  --background: #09070d;
+  --muted: #14101b;
+  --card: #0f0c15;
+  --border: #2b2238;
+  --input: #2b2238;
+  --ring: #c4b5fd;
+  --accent: #181026;
+  --primary-start: #ddd6fe;
+  --primary: #a78bfa;
+  --primary-end: #f0abfc;
+  --primary-foreground: #12091f;
+  --secondary: #1c1330;
+  --secondary-foreground: #ede9fe;
+}
+
+:root[data-accent="rose"] {
+  --border: #eadde0;
+  --input: #eadde0;
+  --ring: #e11d48;
+  --accent: #fff1f2;
+  --primary-start: #fecdd3;
+  --primary: #e11d48;
+  --primary-end: #f97316;
+  --primary-foreground: #ffffff;
+  --secondary: #ffe4e6;
+  --secondary-foreground: #881337;
+}
+
+.dark[data-accent="rose"] {
+  --background: #0c0709;
+  --muted: #171013;
+  --card: #110c0e;
+  --border: #332127;
+  --input: #332127;
+  --ring: #fb7185;
+  --accent: #211018;
+  --primary-start: #fecdd3;
+  --primary: #fb7185;
+  --primary-end: #fb923c;
+  --primary-foreground: #24070d;
+  --secondary: #2a141d;
+  --secondary-foreground: #ffe4e6;
+}
+
+:root[data-accent="slate"] {
+  --border: #dfe5ea;
+  --input: #dfe5ea;
+  --ring: #475569;
+  --accent: #f1f5f9;
+  --primary-start: #cbd5e1;
+  --primary: #475569;
+  --primary-end: #0f766e;
+  --primary-foreground: #ffffff;
+  --secondary: #e2e8f0;
+  --secondary-foreground: #0f172a;
+}
+
+.dark[data-accent="slate"] {
+  --background: #07090b;
+  --muted: #111519;
+  --card: #0d1115;
+  --border: #222b34;
+  --input: #222b34;
+  --ring: #cbd5e1;
+  --accent: #151d26;
+  --primary-start: #cbd5e1;
+  --primary: #94a3b8;
+  --primary-end: #2dd4bf;
+  --primary-foreground: #090d12;
+  --secondary: #18212b;
+  --secondary-foreground: #e2e8f0;
 }
 
 @theme inline {
@@ -118,6 +267,56 @@ body {
   background: linear-gradient(180deg, color-mix(in srgb, var(--primary) 14%, transparent), transparent 72%);
 }
 
+.dashboard-shell {
+  background:
+    linear-gradient(to right, color-mix(in srgb, var(--border) 30%, transparent) 1px, transparent 1px),
+    linear-gradient(to bottom, color-mix(in srgb, var(--border) 24%, transparent) 1px, transparent 1px),
+    radial-gradient(circle at top left, color-mix(in srgb, var(--primary) 9%, transparent), transparent 34%),
+    var(--background);
+  background-size: 48px 48px, 48px 48px, 100% 100%, 100% 100%;
+}
+
+.dashboard-panel {
+  border: 1px solid color-mix(in srgb, var(--border) 82%, transparent);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--card) 95%, transparent), var(--card)),
+    linear-gradient(135deg, color-mix(in srgb, var(--primary) 8%, transparent), transparent 48%);
+  box-shadow: 0 18px 48px color-mix(in srgb, #000 9%, transparent);
+}
+
+.liquid-meter {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border-radius: 999px;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.liquid-plot {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+
+.liquid-plot > div,
+.liquid-plot canvas,
+.liquid-plot svg {
+  width: 100% !important;
+  height: 100% !important;
+  display: block;
+}
+
+.liquid-fallback {
+  width: 100%;
+  height: 100%;
+  border-radius: 999px;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--card) 82%, transparent), color-mix(in srgb, var(--muted) 72%, transparent)),
+    linear-gradient(0deg, color-mix(in srgb, var(--primary) 42%, transparent) 0 64%, transparent 64% 100%);
+}
+
 .particle-field {
   position: absolute;
   inset: 0;
@@ -133,7 +332,7 @@ body {
   background: color-mix(in srgb, var(--primary) 72%, white);
   box-shadow:
     0 0 18px color-mix(in srgb, var(--primary) 62%, transparent),
-    0 0 42px color-mix(in srgb, #8de45a 32%, transparent);
+    0 0 42px color-mix(in srgb, var(--primary-end) 32%, transparent);
   opacity: 0;
   transform: translate3d(0, 0, 0) scale(0.72);
   animation: particle-drift 12s ease-in-out infinite;

@@ -1,6 +1,6 @@
 import { Link, NavLink } from "react-router-dom";
 import { useEffect, useState } from "react";
-import { Menu, X } from "lucide-react";
+import { LogIn, Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Logo } from "./Logo";
 import { ThemeToggle } from "./ThemeToggle";
@@ -20,46 +20,64 @@ export function Header() {
 
   return (
     <header
-      className={cn(
-        "sticky top-0 z-40 w-full transition-all",
-        scrolled
-          ? "border-b bg-background/86 shadow-sm shadow-black/5 backdrop-blur-xl"
-          : "border-b border-border/60 bg-background/68 backdrop-blur-xl",
-      )}
+      className="fixed inset-x-0 top-0 z-50 w-full px-3 py-3 transition-all md:px-4"
     >
-      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 md:px-6">
-        <div className="flex items-center gap-8">
-          <Logo />
-          <nav className="hidden md:flex items-center gap-1">
-            {site.nav.map((item) => (
-              <NavLink
-                key={item.href}
-                to={item.href}
-                className={({ isActive }) =>
-                  cn(
-                    "rounded-md px-3 py-1.5 text-sm transition-colors hover:bg-accent",
-                    isActive ? "text-foreground" : "text-muted-foreground hover:text-foreground",
-                  )
-                }
-              >
-                {item.label}
-              </NavLink>
-            ))}
-          </nav>
+      <div
+        className={cn(
+          "mx-auto grid h-14 w-full max-w-[1180px] grid-cols-[1fr_auto] items-center gap-3 rounded-xl border px-3 shadow-2xl shadow-black/10 backdrop-blur-2xl transition-all md:grid-cols-[1fr_auto_1fr] md:px-4",
+          "border-border/70 bg-card/88 dark:border-white/10 dark:bg-white/[0.08]",
+          scrolled && "shadow-black/20 ring-1 ring-primary/10",
+        )}
+      >
+        <div className="min-w-0">
+          <Logo className="max-w-max rounded-lg px-1.5 py-1 transition-colors hover:bg-foreground/[0.04] dark:hover:bg-white/[0.06]" />
         </div>
 
-        <div className="flex items-center gap-2">
-          <ThemeToggle />
-          <Button asChild variant="ghost" size="sm" className="hidden md:inline-flex">
-            <Link to="/login">登录</Link>
+        <nav className="hidden items-center gap-2 md:flex">
+          {site.nav.map((item) => (
+            <NavLink
+              key={item.href}
+              to={item.href}
+              end={item.href === "/"}
+              className={({ isActive }) =>
+                cn(
+                  "rounded-lg px-4 py-2 text-sm font-medium transition-all",
+                  isActive
+                    ? "bg-primary/12 text-foreground shadow-sm ring-1 ring-primary/15"
+                    : "text-muted-foreground hover:bg-foreground/[0.04] hover:text-foreground dark:hover:bg-white/[0.07]",
+                )
+              }
+            >
+              {item.label}
+            </NavLink>
+          ))}
+        </nav>
+
+        <div className="flex items-center justify-end gap-1.5">
+          <div className="hidden items-center md:flex [&_button]:size-8 [&_button]:rounded-lg">
+            <ThemeToggle />
+          </div>
+          <Button
+            asChild
+            variant="ghost"
+            size="sm"
+            className="hidden h-9 rounded-lg px-3 text-sm font-medium hover:bg-foreground/[0.04] dark:hover:bg-white/[0.07] md:inline-flex"
+          >
+            <Link to="/login">
+              <LogIn className="size-4" />
+              登录
+            </Link>
           </Button>
-          <Button asChild size="sm" className="hidden md:inline-flex">
+          <Button asChild size="sm" className="hidden h-10 rounded-lg px-4 text-sm font-semibold shadow-lg shadow-primary/15 md:inline-flex">
             <Link to="/register">免费注册</Link>
           </Button>
+          <div className="flex items-center md:hidden [&_button]:size-8 [&_button]:rounded-lg">
+            <ThemeToggle />
+          </div>
           <Button
             variant="ghost"
             size="icon"
-            className="md:hidden"
+            className="size-9 rounded-lg md:hidden"
             onClick={() => setOpen((v) => !v)}
             aria-label="菜单"
           >
@@ -69,19 +87,19 @@ export function Header() {
       </div>
 
       {open && (
-        <div className="border-t bg-background md:hidden">
-          <div className="mx-auto flex max-w-7xl flex-col gap-1 px-4 py-3">
+        <div className="mx-auto mt-2 max-w-[1180px] overflow-hidden rounded-xl border border-border/70 bg-card/95 shadow-2xl shadow-black/15 backdrop-blur-xl md:hidden">
+          <div className="flex flex-col gap-1 p-2">
             {site.nav.map((item) => (
               <Link
                 key={item.href}
                 to={item.href}
-                className="rounded-md px-3 py-2 text-sm hover:bg-accent"
+                className="rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-foreground"
                 onClick={() => setOpen(false)}
               >
                 {item.label}
               </Link>
             ))}
-            <div className="flex gap-2 pt-2">
+            <div className="grid grid-cols-2 gap-2 pt-2">
               <Button asChild variant="outline" size="sm" className="flex-1">
                 <Link to="/login">登录</Link>
               </Button>

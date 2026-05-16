@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/table";
 import { PageHeader } from "@/components/dashboard/PageHeader";
 import { fetcher, type LogEntry } from "@/lib/api";
+import { demoLogs } from "@/lib/mock";
 import { formatCurrency, formatNumber } from "@/lib/utils";
 
 const PAGE_SIZE = 15;
@@ -33,6 +34,7 @@ export default function LogsPage() {
   const [page, setPage] = useState(1);
 
   const { data } = useSWR<{ items: LogEntry[]; total: number }>("/log?pageSize=200", fetcher, {
+    fallbackData: { items: demoLogs, total: demoLogs.length },
     revalidateOnFocus: false,
   });
 

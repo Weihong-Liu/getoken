@@ -8,6 +8,7 @@ import { PageHeader } from "@/components/dashboard/PageHeader";
 import { StatCard } from "@/components/dashboard/StatCard";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { fetcher, type Referrals } from "@/lib/api";
+import { demoReferrals } from "@/lib/mock";
 import { copyToClipboard, formatCurrency } from "@/lib/utils";
 
 function maskEmail(email: string): string {
@@ -20,7 +21,10 @@ function maskEmail(email: string): string {
 }
 
 export default function ReferralPage() {
-  const { data } = useSWR<Referrals>("/user/referrals", fetcher, { revalidateOnFocus: false });
+  const { data } = useSWR<Referrals>("/user/referrals", fetcher, {
+    fallbackData: demoReferrals,
+    revalidateOnFocus: false,
+  });
 
   const code = data?.inviteCode ?? "";
   const url = code ? `${window.location.origin}/register?invite=${code}` : "";

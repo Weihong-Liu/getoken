@@ -27,10 +27,12 @@ import {
 } from "@/components/ui/table";
 import { PageHeader } from "@/components/dashboard/PageHeader";
 import { apiFetch, fetcher, type Token } from "@/lib/api";
+import { demoTokens } from "@/lib/mock";
 import { copyToClipboard, formatCurrency, timeAgo } from "@/lib/utils";
 
 export default function TokensPage() {
   const { data, mutate } = useSWR<Token[]>("/token", fetcher, {
+    fallbackData: demoTokens,
     revalidateOnFocus: false,
   });
   const [creating, setCreating] = useState(false);

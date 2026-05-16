@@ -1,5 +1,4 @@
 import { Link } from "react-router-dom";
-import type { CSSProperties } from "react";
 import {
   Activity,
   ArrowRight,
@@ -115,52 +114,40 @@ const faqs = [
   },
 ];
 
-const particles = [
-  { left: "8%", top: "18%", size: 3, delay: "0s", duration: "11s", x: "18px", y: "-34px" },
-  { left: "15%", top: "68%", size: 2, delay: "1.2s", duration: "13s", x: "-22px", y: "-28px" },
-  { left: "24%", top: "28%", size: 2, delay: "2.4s", duration: "12s", x: "16px", y: "-42px" },
-  { left: "31%", top: "76%", size: 3, delay: "0.8s", duration: "15s", x: "-18px", y: "-30px" },
-  { left: "39%", top: "12%", size: 2, delay: "3.1s", duration: "10s", x: "24px", y: "-24px" },
-  { left: "47%", top: "56%", size: 4, delay: "1.8s", duration: "14s", x: "-28px", y: "-40px" },
-  { left: "56%", top: "20%", size: 2, delay: "4.2s", duration: "12s", x: "20px", y: "-36px" },
-  { left: "63%", top: "72%", size: 3, delay: "2.7s", duration: "16s", x: "-20px", y: "-32px" },
-  { left: "71%", top: "34%", size: 2, delay: "1.5s", duration: "11s", x: "26px", y: "-30px" },
-  { left: "78%", top: "15%", size: 3, delay: "3.6s", duration: "13s", x: "-24px", y: "-38px" },
-  { left: "86%", top: "62%", size: 2, delay: "0.4s", duration: "15s", x: "18px", y: "-26px" },
-  { left: "93%", top: "30%", size: 4, delay: "2.1s", duration: "12s", x: "-16px", y: "-44px" },
-];
-
 export default function HomePage() {
   return (
-    <div className="overflow-hidden bg-background">
-      <section className="relative bg-background text-foreground">
-        <div className="absolute inset-0 grid-bg opacity-80" aria-hidden />
-        <ParticleField />
+    <div className="relative isolate overflow-hidden bg-background">
+      <section className="relative z-10 text-foreground">
         <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/40 to-transparent" aria-hidden />
 
         <div className="relative mx-auto w-full max-w-[920px] px-4 pb-16 pt-10 md:px-6 md:pb-20 md:pt-14">
-          <div className="w-full max-w-5xl text-left">
+          <div className="mx-auto flex w-full max-w-5xl flex-col items-center text-center">
             <Badge variant="outline" className="max-w-full border-border bg-muted/50 px-3 py-1 text-[11px] shadow-sm sm:text-xs">
-              <span className="size-1.5 rounded-full bg-success" />
+              <span className="size-1.5 rounded-full bg-primary" />
               渠道在线 · token 计费
             </Badge>
 
             <h1 data-reveal className="mt-6 text-3xl font-semibold leading-[1.08] min-[360px]:text-4xl md:text-5xl lg:text-6xl">
               GeToken
               <span className="block text-foreground/92">一个入口,</span>
-              <span className="block bg-gradient-to-r from-green-600 via-emerald-500 to-amber-500 bg-clip-text text-transparent dark:from-green-400 dark:via-emerald-300 dark:to-amber-200">
+              <span
+                className="block bg-clip-text text-transparent"
+                style={{
+                  backgroundImage: "linear-gradient(90deg, var(--primary), var(--primary-end), var(--primary-start))",
+                }}
+              >
                 <span className="block 2xl:inline">接入 Claude Code</span>
                 <span className="hidden 2xl:inline"> </span>
                 <span className="block 2xl:inline">与 GPT-5</span>
               </span>
             </h1>
 
-            <p data-reveal data-delay="100" className="mt-6 max-w-3xl text-base leading-8 text-muted-foreground md:text-lg">
+            <p data-reveal data-delay="100" className="mx-auto mt-6 max-w-3xl text-base leading-8 text-muted-foreground md:text-lg">
               参考 tabcode.cc 的暗色科技感,但把中转站运营需要的能力补全:
               模型聚合、渠道路由、API Key、充值计费、日志监控、状态页和管理后台。
             </p>
 
-            <div data-reveal data-delay="200" className="mt-9 flex flex-col gap-3 sm:flex-row">
+            <div data-reveal data-delay="200" className="mt-9 flex flex-col justify-center gap-3 sm:flex-row">
               <Button asChild size="xl">
                 <Link to="/register">
                   前往控制台 <ArrowRight className="size-4" />
@@ -171,9 +158,9 @@ export default function HomePage() {
               </Button>
             </div>
 
-            <div data-reveal data-delay="300" className="mt-12 grid max-w-3xl grid-cols-2 gap-3 text-left sm:grid-cols-4">
+            <div data-reveal data-delay="300" className="mx-auto mt-12 grid w-full max-w-3xl grid-cols-2 gap-3 text-center sm:grid-cols-4">
               {heroStats.map((stat) => (
-                <div key={stat.label} className="border-l border-border pl-4">
+                <div key={stat.label} className="border-l border-border px-4 first:border-l-0">
                   <div className="text-2xl font-semibold tabular-nums md:text-3xl">{stat.value}</div>
                   <div className="mt-1 text-xs text-muted-foreground">{stat.label}</div>
                 </div>
@@ -187,7 +174,7 @@ export default function HomePage() {
                 <div className="flex items-center gap-2">
                   <span className="size-2.5 rounded-full bg-danger/85" />
                   <span className="size-2.5 rounded-full bg-warning/85" />
-                  <span className="size-2.5 rounded-full bg-success/85" />
+                  <span className="size-2.5 rounded-full bg-primary/85" />
                 </div>
                 <span className="text-xs text-muted-foreground">GeToken Control Plane</span>
               </div>
@@ -199,7 +186,7 @@ export default function HomePage() {
                       <div className="text-xs text-muted-foreground">实时路由</div>
                       <div className="mt-1 text-lg font-semibold">Multi-provider gateway</div>
                     </div>
-                    <Badge className="bg-success/10 text-success">99.92%</Badge>
+                    <Badge className="border border-primary/20 bg-primary/10 text-primary">99.92%</Badge>
                   </div>
 
                   <div className="mt-5 space-y-3">
@@ -211,14 +198,20 @@ export default function HomePage() {
                             <div className="mt-1 text-xs text-muted-foreground">{row.vendor} · {row.rate}</div>
                           </div>
                           <div className="text-right">
-                            <div className={row.status === "online" ? "text-xs text-success" : "text-xs text-warning"}>
+                            <div className={row.status === "online" ? "text-xs text-primary" : "text-xs text-warning"}>
                               {row.status}
                             </div>
                             <div className="mt-1 text-xs text-muted-foreground">{row.latency}</div>
                           </div>
                         </div>
-                        <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-muted">
-                          <div className="h-full rounded-full bg-gradient-to-r from-green-600 to-emerald-500 dark:from-green-400 dark:to-emerald-300" style={{ width: row.width }} />
+                        <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-primary/10">
+                          <div
+                            className="h-full rounded-full"
+                            style={{
+                              width: row.width,
+                              backgroundImage: "linear-gradient(90deg, var(--primary), var(--primary-end))",
+                            }}
+                          />
                         </div>
                       </div>
                     ))}
@@ -228,7 +221,7 @@ export default function HomePage() {
                 <div className="space-y-4">
                   <div className="rounded-lg border bg-muted/30 p-4">
                     <div className="flex items-center gap-2 text-sm font-medium">
-                      <Wallet className="size-4 text-success" />
+                      <Wallet className="size-4 text-primary" />
                       账户余额
                     </div>
                     <div className="mt-4 text-3xl font-semibold tabular-nums">$ 2,486.38</div>
@@ -241,7 +234,7 @@ export default function HomePage() {
                         <Gauge className="size-4 text-primary" />
                         今日请求
                       </span>
-                      <span className="text-success">+18%</span>
+                      <span className="text-primary">+18%</span>
                     </div>
                     <div className="mt-4 grid grid-cols-2 gap-3">
                       <Metric label="Requests" value="48.2K" />
@@ -251,7 +244,7 @@ export default function HomePage() {
 
                   <div className="rounded-lg border bg-neutral-950 p-4 text-neutral-100">
                     <div className="flex items-center gap-2 text-xs text-neutral-400">
-                      <Terminal className="size-4 text-amber-300" />
+                      <Terminal className="size-4 text-primary" />
                       OpenAI compatible
                     </div>
                     <pre className="mt-3 overflow-x-auto text-xs leading-6 text-neutral-200">
@@ -267,7 +260,7 @@ stream = true`}
             <div className="mt-4 grid grid-cols-3 gap-3 text-xs text-muted-foreground">
               {["SSE 流式响应", "失败自动重试", "IP 白名单"].map((item) => (
                 <div key={item} className="flex items-center gap-2 rounded-lg border bg-card px-3 py-2">
-                  <CheckCircle2 className="size-3.5 text-success" />
+                  <CheckCircle2 className="size-3.5 text-primary" />
                   <span className="truncate">{item}</span>
                 </div>
               ))}
@@ -324,7 +317,7 @@ stream = true`}
           <div data-reveal data-delay="200" className="rounded-lg border bg-neutral-950 text-neutral-100 shadow-xl shadow-neutral-950/10">
             <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
               <span className="inline-flex items-center gap-2 text-sm">
-                <Code2 className="size-4 text-green-300" />
+                <Code2 className="size-4 text-primary" />
                 快速调用
               </span>
               <Badge variant="outline" className="border-white/15 text-white">curl</Badge>
@@ -344,7 +337,7 @@ stream = true`}
             <div className="grid border-t border-white/10 md:grid-cols-3">
               {["OpenAI SDK", "Claude 透传", "Gemini 兼容"].map((item) => (
                 <div key={item} className="border-white/10 px-5 py-4 text-sm text-neutral-300 md:border-r last:md:border-r-0">
-                  <CheckCircle2 className="mb-2 size-4 text-emerald-300" />
+                  <CheckCircle2 className="mb-2 size-4 text-primary" />
                   {item}
                 </div>
               ))}
@@ -415,11 +408,11 @@ stream = true`}
               className="pointer-events-none absolute inset-0"
               style={{
                 background:
-                  "radial-gradient(circle at 0% 0%, color-mix(in srgb, var(--primary) 18%, transparent), transparent 55%), radial-gradient(circle at 100% 100%, color-mix(in srgb, var(--success) 14%, transparent), transparent 55%)",
+                  "radial-gradient(circle at 0% 0%, color-mix(in srgb, var(--primary) 18%, transparent), transparent 55%), radial-gradient(circle at 100% 100%, color-mix(in srgb, var(--primary-end) 14%, transparent), transparent 55%)",
               }}
             />
             <div className="relative">
-              <p className="inline-flex items-center gap-2 text-sm text-success">
+              <p className="inline-flex items-center gap-2 text-sm text-primary">
                 <Sparkles className="size-4" />
                 现在就可以把中转站跑起来
               </p>
@@ -441,31 +434,6 @@ stream = true`}
           </div>
         </div>
       </section>
-    </div>
-  );
-}
-
-function ParticleField() {
-  return (
-    <div className="particle-field" aria-hidden>
-      {particles.map((particle, index) => (
-        <span
-          key={`${particle.left}-${particle.top}`}
-          className="particle"
-          style={{
-            left: particle.left,
-            top: particle.top,
-            width: particle.size,
-            height: particle.size,
-            animationDelay: particle.delay,
-            animationDuration: particle.duration,
-            "--particle-x": particle.x,
-            "--particle-y": particle.y,
-          } as CSSProperties}
-        >
-          {index % 4 === 0 && <span />}
-        </span>
-      ))}
     </div>
   );
 }

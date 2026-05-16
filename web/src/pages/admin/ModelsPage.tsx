@@ -27,12 +27,15 @@ import {
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { PageHeader } from "@/components/dashboard/PageHeader";
 import { apiFetch, fetcher, type AdminModelMapping, type AdminUpstream } from "@/lib/api";
+import { demoAdminModels, demoAdminUpstreams } from "@/lib/mock";
 
 export default function ModelsPage() {
   const { data, mutate } = useSWR<AdminModelMapping[]>("/admin/models", fetcher, {
+    fallbackData: demoAdminModels,
     revalidateOnFocus: false,
   });
   const { data: upstreams } = useSWR<AdminUpstream[]>("/admin/upstreams", fetcher, {
+    fallbackData: demoAdminUpstreams,
     revalidateOnFocus: false,
   });
 

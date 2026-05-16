@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/table";
 import { PageHeader } from "@/components/dashboard/PageHeader";
 import { fetcher, type AuditLog, type Page } from "@/lib/api";
+import { demoAdminAuditLogs } from "@/lib/mock";
 import { formatCurrency } from "@/lib/utils";
 
 const PAGE_SIZE = 30;
@@ -47,6 +48,7 @@ export default function AdminAuditPage() {
   if (actor) params.set("actorId", actor);
 
   const { data } = useSWR<Page<AuditLog>>(`/admin/audit?${params}`, fetcher, {
+    fallbackData: { items: demoAdminAuditLogs, total: demoAdminAuditLogs.length, page, pageSize: PAGE_SIZE },
     revalidateOnFocus: false,
   });
 

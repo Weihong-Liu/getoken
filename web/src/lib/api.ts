@@ -85,6 +85,20 @@ const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "/api";
 // that the backend auto-creates from ADMIN_EMAIL / ADMIN_PASSWORD env on first boot.
 export const DEMO_LOGIN_EMAIL = "admin@getoken.dev";
 export const DEMO_LOGIN_PASSWORD = "Getoken123!";
+const DEMO_SESSION_TOKEN = "getoken-demo-session";
+
+let demoUser: User = {
+  id: 1,
+  email: DEMO_LOGIN_EMAIL,
+  username: "admin",
+  role: "admin",
+  status: "active",
+  quota: 86.42,
+  usedQuota: 18.76,
+  groupId: 1,
+  inviteCode: "GT-ADMIN",
+  createdAt: new Date(Date.now() - 86400000 * 30).toISOString(),
+};
 
 export class ApiError extends Error {
   status: number;
@@ -111,6 +125,9 @@ export async function apiFetch<T = unknown>(
   init: RequestInit = {},
 ): Promise<T> {
   const token = getToken();
+  const demoResponse = resolveDemoRequest<T>(path, init, token);
+  if (demoResponse.handled) return demoResponse.data;
+
   const headers = new Headers(init.headers);
   if (!headers.has("Content-Type") && init.body) {
     headers.set("Content-Type", "application/json");
@@ -140,6 +157,65 @@ export async function apiFetch<T = unknown>(
 }
 
 export const fetcher = <T = unknown>(path: string) => apiFetch<T>(path);
+
+function requestMethod(init: RequestInit): string {
+  return (init.method ?? "GET").toUpperCase();
+}
+
+function requestJson(init: RequestInit): Record<string, unknown> {
+  if (!init.body || typeof init.body !== "string") return {};
+  try {
+    const parsed = JSON.parse(init.body);
+    return parsed && typeof parsed === "object" ? parsed as Record<string, unknown> : {};
+  } catch {
+    return {};
+  }
+}
+
+function resolveDemoRequest<T>(
+  path: string,
+  init: RequestInit,
+  token: string | null,
+): { handled: true; data: T } | { handled: false; data?: never } {
+  const method = requestMethod(init);
+  const body = requestJson(init);
+
+  if (path === "/auth/login" && method === "POST") {
+    const email = String(body.email ?? "").trim().toLowerCase();
+    const password = String(body.password ?? "");
+    if (email === DEMO_LOGIN_EMAIL && password === DEMO_LOGIN_PASSWORD) {
+      return { handled: true, data: { token: DEMO_SESSION_TOKEN } as T };
+    }
+  }
+
+  if (token !== DEMO_SESSION_TOKEN) return { handled: false };
+
+  if (path === "/user/self") {
+    if (method === "PUT") {
+      demoUser = { ...demoUser, username: String(body.username || demoUser.username) };
+    }
+    return { handled: true, data: demoUser as T };
+  }
+
+  if (path === "/user/password" && method === "PUT") {
+    return { handled: true, data: {} as T };
+  }
+
+  if (path === "/auth/logout") {
+    return { handled: true, data: {} as T };
+  }
+
+  if (path === "/topup/redeem" && method === "POST") {
+    demoUser = { ...demoUser, quota: demoUser.quota + 50 };
+    return { handled: true, data: { balance: demoUser.quota } as T };
+  }
+
+  if (path === "/topup/order" && method === "POST") {
+    return { handled: true, data: { payUrl: "/dashboard/topup" } as T };
+  }
+
+  return { handled: false };
+}
 
 // ---------------------------------------------------------------------------
 // Admin / referral types

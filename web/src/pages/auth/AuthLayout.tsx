@@ -1,6 +1,7 @@
 import { Link, Outlet } from "react-router-dom";
 import { ThemeToggle } from "@/components/marketing/ThemeToggle";
 import { AuthDashboardMap } from "@/components/marketing/AuthDashboardMap";
+import { LogoMark } from "@/components/marketing/Logo";
 
 export function AuthLayout() {
   return (
@@ -10,18 +11,7 @@ export function AuthLayout() {
       <div className="relative z-10 flex min-h-screen flex-col">
         <div className="flex items-center justify-between px-6 py-4 md:px-10">
           <Link to="/" className="inline-flex items-center gap-2">
-            <span className="grid size-8 place-items-center rounded-lg border border-border bg-card/60 backdrop-blur">
-              <svg
-                viewBox="0 0 32 32"
-                className="size-4"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.4"
-                strokeLinecap="round"
-              >
-                <path d="M10 12h12M10 16h12M10 20h8" />
-              </svg>
-            </span>
+            <LogoMark />
             <span className="text-base font-semibold">GeToken</span>
           </Link>
           <ThemeToggle />
