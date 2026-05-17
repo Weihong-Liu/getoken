@@ -50,6 +50,8 @@ func (h *Handler) Register(rg *gin.RouterGroup) {
 	rg.POST("/send-code", h.sendCode)
 	rg.POST("/forgot", h.forgot)
 	rg.POST("/logout", middleware.Auth(h.cfg, h.s, middleware.AuthOpt{}), h.logout)
+	rg.POST("/github/start", h.githubStart)
+	rg.POST("/github/callback", h.githubCallback)
 }
 
 type loginReq struct {
@@ -103,7 +105,7 @@ type registerReq struct {
 }
 
 func (h *Handler) register(c *gin.Context) {
-	if !h.cfg.RegisterEnabled {
+	if !store.SettingBool(h.s.DB, "register.enabled", h.cfg.RegisterEnabled) {
 		response.Fail(c, errkit.New(403, "registration_closed", "当前未开放注册"))
 		return
 	}
@@ -118,7 +120,15 @@ func (h *Handler) register(c *gin.Context) {
 	}
 	email := strings.ToLower(strings.TrimSpace(req.Email))
 
-	if h.cfg.RegisterEmailCodeRequired {
+	whitelist := normalizeEmailSuffixWhitelist(
+		store.SettingStringSlice(h.s.DB, "register.emailSuffixWhitelist", nil),
+	)
+	if !isEmailSuffixAllowed(email, whitelist) {
+		response.Fail(c, errkit.New(403, "email_domain_not_allowed", "邮箱域名不在允许列表内"))
+		return
+	}
+
+	if store.SettingBool(h.s.DB, "register.requireEmail", h.cfg.RegisterEmailCodeRequired) {
 		if !h.verifyEmailCode(c, email, "register", req.EmailCode) {
 			return
 		}
@@ -207,6 +217,19 @@ func (h *Handler) sendCode(c *gin.Context) {
 		purpose = "register"
 	}
 	email := strings.ToLower(strings.TrimSpace(req.Email))
+
+	// Email-domain whitelist only applies to brand-new registrations. Existing
+	// users keep working even if their original domain is later removed.
+	if purpose == "register" {
+		whitelist := normalizeEmailSuffixWhitelist(
+			store.SettingStringSlice(h.s.DB, "register.emailSuffixWhitelist", nil),
+		)
+		if !isEmailSuffixAllowed(email, whitelist) {
+			response.Fail(c, errkit.New(403, "email_domain_not_allowed", "邮箱域名不在允许列表内"))
+			return
+		}
+	}
+
 	code := idgen.CodeFromEmail()
 
 	if err := h.s.Redis.Set(c, codeKey(email, purpose), code, 10*time.Minute).Err(); err != nil {

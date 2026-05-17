@@ -38,6 +38,10 @@ type Config struct {
 	RegisterInviteRequired     bool
 	RegisterEmailCodeRequired  bool
 
+	GitHubClientID     string
+	GitHubClientSecret string
+	GitHubRedirectURL  string
+
 	CORSOrigins []string
 }
 
@@ -72,6 +76,10 @@ func Load() (*Config, error) {
 		RegisterInviteRequired:    envBool("REGISTER_INVITE_REQUIRED", false),
 		RegisterEmailCodeRequired: envBool("REGISTER_EMAIL_CODE_REQUIRED", true),
 
+		GitHubClientID:     env("GITHUB_CLIENT_ID", ""),
+		GitHubClientSecret: env("GITHUB_CLIENT_SECRET", ""),
+		GitHubRedirectURL:  env("GITHUB_REDIRECT_URL", ""),
+
 		CORSOrigins: splitCSV(env("CORS_ORIGINS", "http://localhost:5173")),
 	}
 
@@ -85,6 +93,10 @@ func Load() (*Config, error) {
 }
 
 func (c *Config) SMTPEnabled() bool { return c.SMTPHost != "" && c.SMTPFrom != "" }
+
+func (c *Config) GitHubOAuthEnabled() bool {
+	return c.GitHubClientID != "" && c.GitHubClientSecret != "" && c.GitHubRedirectURL != ""
+}
 
 func env(k, def string) string {
 	if v, ok := os.LookupEnv(k); ok && v != "" {

@@ -8,22 +8,42 @@ import (
 	"github.com/shopspring/decimal"
 	"go.uber.org/zap"
 
+	"github.com/puppet/getoken/server/internal/config"
 	"github.com/puppet/getoken/server/internal/pkg/errkit"
 	"github.com/puppet/getoken/server/internal/response"
 	"github.com/puppet/getoken/server/internal/store"
 )
 
 type Handler struct {
+	cfg *config.Config
 	s   *store.Store
 	log *zap.Logger
 }
 
-func NewHandler(s *store.Store, log *zap.Logger) *Handler { return &Handler{s: s, log: log} }
+func NewHandler(cfg *config.Config, s *store.Store, log *zap.Logger) *Handler {
+	return &Handler{cfg: cfg, s: s, log: log}
+}
 
 func (h *Handler) Register(rg *gin.RouterGroup) {
 	rg.GET("/models", h.listModels)
 	rg.GET("/status", h.status)
 	rg.GET("/announcements", h.listAnnouncements)
+	rg.GET("/settings", h.settings)
+}
+
+// settings exposes the subset of admin settings that the login / register pages
+// need to decide what UI to show — open registration toggle, email verify
+// requirement, email-domain whitelist. Values fall back to config env defaults
+// when the corresponding setting row is absent.
+func (h *Handler) settings(c *gin.Context) {
+	whitelist := store.SettingStringSlice(h.s.DB, "register.emailSuffixWhitelist", nil)
+	response.OK(c, gin.H{
+		"registrationEnabled":         store.SettingBool(h.s.DB, "register.enabled", h.cfg.RegisterEnabled),
+		"emailVerifyRequired":         store.SettingBool(h.s.DB, "register.requireEmail", h.cfg.RegisterEmailCodeRequired),
+		"inviteRequired":              h.cfg.RegisterInviteRequired,
+		"emailSuffixWhitelist":        whitelist,
+		"githubOAuthEnabled":          h.cfg.GitHubOAuthEnabled(),
+	})
 }
 
 type publicModel struct {

@@ -8,6 +8,7 @@ import { AuthLayout } from "@/pages/auth/AuthLayout";
 import LoginPage from "@/pages/auth/LoginPage";
 import RegisterPage from "@/pages/auth/RegisterPage";
 import ForgotPage from "@/pages/auth/ForgotPage";
+import GithubCallbackPage from "@/pages/auth/GithubCallbackPage";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { RequireAuth } from "@/components/dashboard/RequireAuth";
 import OverviewPage from "@/pages/dashboard/OverviewPage";
@@ -44,6 +45,7 @@ export const router = createBrowserRouter([
       { path: "/login", element: <LoginPage /> },
       { path: "/register", element: <RegisterPage /> },
       { path: "/forgot", element: <ForgotPage /> },
+      { path: "/auth/github/callback", element: <GithubCallbackPage /> },
     ],
   },
   {

@@ -27,6 +27,7 @@ type User struct {
 	UsedQuota    decimal.Decimal `gorm:"type:numeric(18,6);not null;default:0" json:"usedQuota"`
 	InviteCode   string          `gorm:"uniqueIndex;size:32" json:"inviteCode"`
 	InvitedBy    *uint64         `gorm:"index" json:"invitedBy,omitempty"`
+	GithubID     *int64          `gorm:"column:github_id;uniqueIndex" json:"-"`
 	CreatedAt    time.Time       `json:"createdAt"`
 	UpdatedAt    time.Time       `json:"updatedAt"`
 }

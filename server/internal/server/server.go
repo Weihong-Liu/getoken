@@ -37,7 +37,7 @@ func New(cfg *config.Config, s *store.Store, log *zap.Logger) *gin.Engine {
 	// Public
 	auth.NewHandler(cfg, s, log).Register(api.Group("/auth"))
 	publicGroup := api.Group("/public")
-	public.NewHandler(s, log).Register(publicGroup)
+	public.NewHandler(cfg, s, log).Register(publicGroup)
 
 	// Authenticated user routes
 	authed := api.Group("")
