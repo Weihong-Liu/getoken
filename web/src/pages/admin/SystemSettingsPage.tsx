@@ -260,17 +260,27 @@ export default function SystemSettingsPage() {
               <form onSubmit={onSubmitSecurity} className="space-y-4 max-w-xl">
                 <div className="flex items-center justify-between rounded-lg border p-3">
                   <div>
-                    <Label htmlFor="registerEnabled">开放注册</Label>
-                    <p className="text-xs text-muted-foreground mt-0.5">关闭后需要邀请码才能注册</p>
+                    <Label htmlFor="registerEnabled">开启验证码注册</Label>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      关闭后公共注册接口直接拒绝，新用户只能由 admin 在「用户管理」手动添加
+                    </p>
                   </div>
                   <Switch id="registerEnabled" name="registerEnabled" defaultChecked={asBool(settings["register.enabled"], true)} />
                 </div>
                 <div className="flex items-center justify-between rounded-lg border p-3">
                   <div>
-                    <Label htmlFor="requireEmail">必须邮箱验证</Label>
-                    <p className="text-xs text-muted-foreground mt-0.5">注册时强制发送验证码</p>
+                    <Label htmlFor="requireEmail">注册时必须邮箱验证码</Label>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      启用后注册强制发送邮件验证码 (依赖 MAIL_PROVIDER；当前 Resend 已激活)；关闭则只要密码合法就能直接注册，仅在 admin 信得过受众时考虑
+                    </p>
                   </div>
                   <Switch id="requireEmail" name="requireEmail" defaultChecked={asBool(settings["register.requireEmail"], true)} />
+                </div>
+                <div className="rounded-lg border p-3 bg-muted/40">
+                  <Label>找回密码</Label>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    已自动启用 — 用户在登录页点「忘记密码」走邮件 6 位码重置流程，未注册的邮箱也会返回相同响应（防枚举）
+                  </p>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="emailSuffixWhitelist">邮箱域名白名单</Label>
