@@ -12,6 +12,7 @@ import (
 	"github.com/puppet/getoken/server/internal/auth"
 	"github.com/puppet/getoken/server/internal/config"
 	logmod "github.com/puppet/getoken/server/internal/log"
+	mailpkg "github.com/puppet/getoken/server/internal/mail"
 	"github.com/puppet/getoken/server/internal/middleware"
 	"github.com/puppet/getoken/server/internal/public"
 	"github.com/puppet/getoken/server/internal/relay"
@@ -34,8 +35,12 @@ func New(cfg *config.Config, s *store.Store, log *zap.Logger) *gin.Engine {
 
 	api := r.Group("/api")
 
+	// Outbound mailer is selected at boot from MAIL_PROVIDER env (resend / smtp / "").
+	// One Sender per process — implementations are safe for concurrent use.
+	mailer := mailpkg.New(cfg, log)
+
 	// Public
-	auth.NewHandler(cfg, s, log).Register(api.Group("/auth"))
+	auth.NewHandler(cfg, s, log, mailer).Register(api.Group("/auth"))
 	publicGroup := api.Group("/public")
 	public.NewHandler(cfg, s, log).Register(publicGroup)
 

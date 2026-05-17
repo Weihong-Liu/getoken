@@ -19,6 +19,7 @@ import (
 
 	"github.com/puppet/getoken/server/internal/audit"
 	"github.com/puppet/getoken/server/internal/config"
+	mailpkg "github.com/puppet/getoken/server/internal/mail"
 	"github.com/puppet/getoken/server/internal/middleware"
 	"github.com/puppet/getoken/server/internal/pkg/errkit"
 	"github.com/puppet/getoken/server/internal/pkg/idgen"
@@ -27,13 +28,14 @@ import (
 )
 
 type Handler struct {
-	cfg *config.Config
-	s   *store.Store
-	log *zap.Logger
+	cfg    *config.Config
+	s      *store.Store
+	log    *zap.Logger
+	mailer mailpkg.Sender
 }
 
-func NewHandler(cfg *config.Config, s *store.Store, log *zap.Logger) *Handler {
-	return &Handler{cfg: cfg, s: s, log: log}
+func NewHandler(cfg *config.Config, s *store.Store, log *zap.Logger, mailer mailpkg.Sender) *Handler {
+	return &Handler{cfg: cfg, s: s, log: log, mailer: mailer}
 }
 
 func (h *Handler) emitAudit(c *gin.Context, action, target string, detail any) {
@@ -237,12 +239,24 @@ func (h *Handler) sendCode(c *gin.Context) {
 		return
 	}
 
-	if h.cfg.SMTPEnabled() {
-		// TODO: wire up actual mailer; we still log code to ease local dev.
-		h.log.Info("email code issued", zap.String("email", email), zap.String("purpose", purpose))
+	// Dispatch the email. Failures here don't poison the response — the code
+	// is already in Redis with a 10 min TTL, so the user can simply hit the
+	// resend button if delivery fails (e.g. Resend rate limit, transient
+	// SMTP outage). We DO surface the error in logs so operators see why
+	// codes are missing if a deeper outage is brewing.
+	if h.cfg.MailEnabled() {
+		subject := fmt.Sprintf("[GetToken] %s 验证码", purposeLabel(purpose))
+		body := mailpkg.VerifyCodeBody("GetToken", code)
+		if err := h.mailer.Send(c.Request.Context(), email, subject, body); err != nil {
+			h.log.Warn("mail send failed (code still valid in redis)",
+				zap.Error(err), zap.String("email", email), zap.String("purpose", purpose))
+		}
 	} else {
-		// dev convenience: surface in logs so local registration just works
-		h.log.Warn("smtp not configured; code printed", zap.String("email", email), zap.String("code", code))
+		// Local dev convenience: surface the code in server logs so devs can
+		// register without a real ESP. Disabled in production (where
+		// MailEnabled() should be true).
+		h.log.Warn("mailer disabled; code printed for dev",
+			zap.String("email", email), zap.String("purpose", purpose), zap.String("code", code))
 	}
 
 	if h.cfg.Env == "development" {
@@ -250,6 +264,15 @@ func (h *Handler) sendCode(c *gin.Context) {
 		return
 	}
 	response.OK(c, gin.H{"sent": true})
+}
+
+func purposeLabel(p string) string {
+	switch p {
+	case "forgot":
+		return "密码重置"
+	default:
+		return "注册"
+	}
 }
 
 type forgotReq struct {
