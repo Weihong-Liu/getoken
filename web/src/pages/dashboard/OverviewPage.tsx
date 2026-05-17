@@ -18,10 +18,9 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/dashboard/PageHeader";
 import { StatCard } from "@/components/dashboard/StatCard";
-import { fetcher, type DashboardStats } from "@/lib/api";
-import { demoStats } from "@/lib/mock";
+import { fetcher, type DashboardStats, type ModelInfo, type StatusInfo } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
-import { formatCurrency, formatNumber } from "@/lib/utils";
+import { formatCurrency, formatNumber, timeAgo } from "@/lib/utils";
 import {
   AreaChart,
   Area,
@@ -32,13 +31,15 @@ import {
   CartesianGrid,
 } from "recharts";
 
-const providerHealth = [
-  { name: "OpenAI", model: "GPT-5 / GPT-4o", latency: "245ms", uptime: "99.99%", load: 88, status: "正常" },
-  { name: "Anthropic", model: "Claude Sonnet", latency: "280ms", uptime: "99.95%", load: 82, status: "正常" },
-  { name: "Gemini", model: "Gemini 2.5 Pro", latency: "820ms", uptime: "98.70%", load: 54, status: "缓慢" },
-];
-
 const LiquidChart = lazy(() => import("@ant-design/plots").then((module) => ({ default: module.Liquid })));
+
+const emptyDashboardStats: DashboardStats = {
+  balance: 0,
+  usedToday: 0,
+  requestsToday: 0,
+  series: [],
+  topModels: [],
+};
 
 const quickLinks = [
   { label: "API Keys", to: "/dashboard/tokens", icon: ShieldCheck },
@@ -105,11 +106,21 @@ function useLiquidThemeColors() {
 export default function OverviewPage() {
   const { user } = useAuth();
   const { data } = useSWR<DashboardStats>("/stats?range=14d", fetcher, {
-    fallbackData: demoStats,
+    revalidateOnFocus: false,
+  });
+  const { data: publicModels } = useSWR<ModelInfo[]>("/public/models", fetcher, {
+    revalidateOnFocus: false,
+  });
+  const { data: publicStatus } = useSWR<StatusInfo>("/public/status", fetcher, {
+    refreshInterval: 30000,
     revalidateOnFocus: false,
   });
 
-  const stats = data ?? demoStats;
+  const stats = data ?? emptyDashboardStats;
+  const upstreams = publicStatus?.upstreams ?? [];
+  const onlineUpstreams = upstreams.filter((item) => item.status === "online").length;
+  const routeHealth = upstreams.length > 0 ? Math.round((onlineUpstreams / upstreams.length) * 100) : null;
+  const providerHealth = upstreams.slice(0, 4);
   const balancePercent = Math.max(0.18, Math.min(0.7, stats.balance / 140));
   const username = user?.username || user?.email?.split("@")[0] || "开发者";
 
@@ -131,8 +142,8 @@ export default function OverviewPage() {
         <div className="grid gap-4 sm:grid-cols-2">
           <StatCard title="今日消费" value={formatCurrency(stats.usedToday)} icon={TrendingUp} tone="warning" hint="较昨日平稳" />
           <StatCard title="今日请求" value={formatNumber(stats.requestsToday)} icon={Activity} tone="success" hint="实时聚合" />
-          <StatCard title="可用模型" value="12+" icon={Cpu} hint="Claude / GPT / Gemini" />
-          <StatCard title="路由状态" value="99.92%" icon={RadioTower} tone="success" hint="多上游自动切换" />
+          <StatCard title="可用模型" value={formatNumber(publicModels?.length ?? 0)} icon={Cpu} hint="公开模型接口" />
+          <StatCard title="路由状态" value={routeHealth === null ? "-" : `${routeHealth}%`} icon={RadioTower} tone={routeHealth === null || routeHealth >= 80 ? "success" : "warning"} hint="按在线上游计算" />
         </div>
       </section>
 
@@ -192,23 +203,26 @@ export default function OverviewPage() {
             </div>
           </CardHeader>
           <CardContent className="space-y-3">
+            {providerHealth.length === 0 && (
+              <div className="py-6 text-center text-sm text-muted-foreground">暂无上游状态数据</div>
+            )}
             {providerHealth.map((item) => (
               <div key={item.name} className="rounded-lg border bg-background/55 p-3">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <div className="font-medium">{item.name}</div>
-                    <div className="mt-1 truncate text-xs text-muted-foreground">{item.model}</div>
+                    <div className="mt-1 truncate text-xs text-muted-foreground">{item.type}</div>
                   </div>
-                  <Badge variant={item.status === "正常" ? "success" : "warning"}>{item.status}</Badge>
+                  <Badge variant={statusBadgeVariant(item.status)}>{statusLabel(item.status)}</Badge>
                 </div>
                 <div className="mt-4 flex items-end justify-between gap-4">
                   <div className="text-xs text-muted-foreground">
-                    <span className="font-medium text-foreground">{item.latency}</span>
+                    <span className="font-medium text-foreground">{item.latencyMs > 0 ? `${item.latencyMs}ms` : "-"}</span>
                     <span className="mx-2">/</span>
-                    {item.uptime}
+                    {item.lastCheckAt ? timeAgo(item.lastCheckAt) : "未检测"}
                   </div>
                   <div className="h-1.5 w-28 overflow-hidden rounded-full bg-muted">
-                    <div className="h-full rounded-full bg-primary" style={{ width: `${item.load}%` }} />
+                    <div className="h-full rounded-full bg-primary" style={{ width: `${statusLoad(item.status)}%` }} />
                   </div>
                 </div>
               </div>
@@ -291,6 +305,24 @@ resp = client.chat.completions.create(
   );
 }
 
+function statusLabel(status: StatusInfo["upstreams"][number]["status"]) {
+  if (status === "online") return "正常";
+  if (status === "degraded") return "降级";
+  return "离线";
+}
+
+function statusBadgeVariant(status: StatusInfo["upstreams"][number]["status"]): "success" | "warning" | "danger" {
+  if (status === "online") return "success";
+  if (status === "degraded") return "warning";
+  return "danger";
+}
+
+function statusLoad(status: StatusInfo["upstreams"][number]["status"]) {
+  if (status === "online") return 100;
+  if (status === "degraded") return 60;
+  return 8;
+}
+
 function BalancePanel({ stats, balancePercent }: { stats: DashboardStats; balancePercent: number }) {
   const liquidColors = useLiquidThemeColors();
   const liquidConfig = useMemo<LiquidConfig>(
@@ -319,7 +351,7 @@ function BalancePanel({ stats, balancePercent }: { stats: DashboardStats; balanc
         contentFillOpacity: 0,
       },
     }),
-    [balancePercent, liquidColors.border, liquidColors.card, liquidColors.primary],
+    [balancePercent, liquidColors.card, liquidColors.primary],
   );
 
   return (
@@ -344,7 +376,7 @@ function BalancePanel({ stats, balancePercent }: { stats: DashboardStats; balanc
 
         <div>
           <Badge variant="secondary"><Gauge className="size-3.5" />余额水波图</Badge>
-          <h2 className="mt-4 text-2xl font-semibold">余额状态充足</h2>
+          <h2 className="mt-4 text-2xl font-semibold">当前余额</h2>
           <p className="mt-2 max-w-xl text-sm leading-6 text-muted-foreground">
             水位按当前余额动态呈现,结合今日消费和请求量,可以快速判断是否需要充值或调整业务限额。
           </p>
@@ -359,8 +391,8 @@ function BalancePanel({ stats, balancePercent }: { stats: DashboardStats; balanc
               <div className="mt-2 text-lg font-semibold tabular-nums">{formatNumber(stats.requestsToday)}</div>
             </div>
             <div className="rounded-lg border bg-background/55 p-3">
-              <div className="text-xs text-muted-foreground">可用天数</div>
-              <div className="mt-2 text-lg font-semibold tabular-nums">20+</div>
+              <div className="text-xs text-muted-foreground">Top 模型数</div>
+              <div className="mt-2 text-lg font-semibold tabular-nums">{formatNumber(stats.topModels.length)}</div>
             </div>
           </div>
         </div>

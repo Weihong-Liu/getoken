@@ -94,37 +94,25 @@ export type ModelInfo = {
   context: number;
   inputPrice: number;
   outputPrice: number;
+  cachedPrice: number;
+  cacheCreationPrice: number;
   status: "online" | "offline";
-  group: string[];
+  allowedGroups: string[];
 };
 
 export type StatusInfo = {
-  channels: { name: string; status: "online" | "degraded" | "offline"; latency: number }[];
-  uptime: number;
+  upstreams: {
+    id: number;
+    name: string;
+    type: string;
+    status: "online" | "degraded" | "offline";
+    latencyMs: number;
+    lastCheckAt?: string;
+  }[];
   updatedAt: string;
 };
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "/api";
-
-// Convenience constants kept around so the LoginPage can pre-fill the bootstrap admin account
-// that the backend auto-creates from ADMIN_EMAIL / ADMIN_PASSWORD env on first boot.
-export const DEMO_LOGIN_EMAIL = "admin@getoken.dev";
-export const DEMO_LOGIN_PASSWORD = "Getoken123!";
-const DEMO_SESSION_TOKEN = "getoken-demo-session";
-
-let demoUser: User = {
-  id: 1,
-  email: DEMO_LOGIN_EMAIL,
-  username: "admin",
-  role: "admin",
-  status: "active",
-  quota: 86.42,
-  usedQuota: 18.76,
-  groupId: 1,
-  inviteCode: "GT-ADMIN",
-  createdAt: new Date(Date.now() - 86400000 * 30).toISOString(),
-};
-let demoPaymentOrders: PaymentOrder[] = [];
 
 export class ApiError extends Error {
   status: number;
@@ -151,9 +139,6 @@ export async function apiFetch<T = unknown>(
   init: RequestInit = {},
 ): Promise<T> {
   const token = getToken();
-  const demoResponse = resolveDemoRequest<T>(path, init, token);
-  if (demoResponse.handled) return demoResponse.data;
-
   const headers = new Headers(init.headers);
   if (!headers.has("Content-Type") && init.body) {
     headers.set("Content-Type", "application/json");
@@ -183,117 +168,6 @@ export async function apiFetch<T = unknown>(
 }
 
 export const fetcher = <T = unknown>(path: string) => apiFetch<T>(path);
-
-function requestMethod(init: RequestInit): string {
-  return (init.method ?? "GET").toUpperCase();
-}
-
-function requestJson(init: RequestInit): Record<string, unknown> {
-  if (!init.body || typeof init.body !== "string") return {};
-  try {
-    const parsed = JSON.parse(init.body);
-    return parsed && typeof parsed === "object" ? parsed as Record<string, unknown> : {};
-  } catch {
-    return {};
-  }
-}
-
-function resolveDemoRequest<T>(
-  path: string,
-  init: RequestInit,
-  token: string | null,
-): { handled: true; data: T } | { handled: false; data?: never } {
-  const method = requestMethod(init);
-  const body = requestJson(init);
-
-  if (path === "/auth/login" && method === "POST") {
-    const email = String(body.email ?? "").trim().toLowerCase();
-    const password = String(body.password ?? "");
-    if (email === DEMO_LOGIN_EMAIL && password === DEMO_LOGIN_PASSWORD) {
-      return { handled: true, data: { token: DEMO_SESSION_TOKEN } as T };
-    }
-  }
-
-  if (token !== DEMO_SESSION_TOKEN) return { handled: false };
-
-  if (path === "/user/self") {
-    if (method === "PUT") {
-      demoUser = { ...demoUser, username: String(body.username || demoUser.username) };
-    }
-    return { handled: true, data: demoUser as T };
-  }
-
-  if (path === "/user/password" && method === "PUT") {
-    return { handled: true, data: {} as T };
-  }
-
-  if (path === "/auth/logout") {
-    return { handled: true, data: {} as T };
-  }
-
-  if (path === "/topup/redeem" && method === "POST") {
-    demoUser = { ...demoUser, quota: demoUser.quota + 50 };
-    return { handled: true, data: { balance: demoUser.quota } as T };
-  }
-
-  if (path === "/topup/orders" && method === "GET") {
-    return { handled: true, data: demoPaymentOrders as T };
-  }
-
-  if (path === "/topup/order" && method === "POST") {
-    const order: PaymentOrder = {
-      id: Date.now(),
-      orderNo: `pay_demo_${Date.now()}`,
-      userId: demoUser.id,
-      provider: "alipay",
-      channel: "alipay",
-      amount: Number(body.amount || 50),
-      currency: "USD",
-      status: "PENDING",
-      payUrl: "/dashboard/topup",
-      qrContent: `GETOKEN:alipay:demo:${Number(body.amount || 50).toFixed(2)}`,
-      providerRef: "",
-      expiredAt: new Date(Date.now() + 30 * 60_000).toISOString(),
-      paidAt: null,
-      completedAt: null,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-    demoPaymentOrders = [order, ...demoPaymentOrders].slice(0, 50);
-    return { handled: true, data: { order, payUrl: order.payUrl, qrContent: order.qrContent } as T };
-  }
-
-  if (path.includes("/topup/orders/") && path.endsWith("/simulate-paid") && method === "POST") {
-    const id = Number(path.match(/\/topup\/orders\/(\\d+)\/simulate-paid$/)?.[1]);
-    const existing = demoPaymentOrders.find((item) => item.id === id);
-    const paidAt = new Date().toISOString();
-    const paid: PaymentOrder = {
-      ...(existing ?? {
-        id: Date.now(),
-        orderNo: `pay_demo_${Date.now()}`,
-        userId: demoUser.id,
-        provider: "alipay",
-        channel: "alipay",
-        amount: 50,
-        currency: "USD",
-        payUrl: "/dashboard/topup",
-        qrContent: "GETOKEN:alipay:demo:50.00",
-        expiredAt: null,
-        createdAt: paidAt,
-      }),
-      status: "COMPLETED",
-      providerRef: "simulated",
-      paidAt,
-      completedAt: paidAt,
-      updatedAt: paidAt,
-    };
-    demoPaymentOrders = [paid, ...demoPaymentOrders.filter((item) => item.id !== paid.id)].slice(0, 50);
-    demoUser = { ...demoUser, quota: demoUser.quota + Number(paid.amount || 0) };
-    return { handled: true, data: paid as T };
-  }
-
-  return { handled: false };
-}
 
 // ---------------------------------------------------------------------------
 // Admin / referral types
@@ -471,23 +345,13 @@ export type AdminAnnouncement = {
 
 export type AdminSettings = Record<string, unknown>;
 
-// PublicSettings is what /api/public/settings returns to the login / register
-// pages. Defaults mirror the backend env defaults so the UI degrades sanely if
-// the endpoint is unreachable.
+// PublicSettings is what /api/public/settings returns to the login / register pages.
 export type PublicSettings = {
   registrationEnabled: boolean;
   emailVerifyRequired: boolean;
   inviteRequired: boolean;
   emailSuffixWhitelist: string[];
   githubOAuthEnabled: boolean;
-};
-
-export const defaultPublicSettings: PublicSettings = {
-  registrationEnabled: true,
-  emailVerifyRequired: true,
-  inviteRequired: false,
-  emailSuffixWhitelist: [],
-  githubOAuthEnabled: false,
 };
 
 export type AuditLog = {

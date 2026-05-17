@@ -26,7 +26,6 @@ import {
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { PageHeader } from "@/components/dashboard/PageHeader";
 import { apiFetch, fetcher, type AdminAnnouncement } from "@/lib/api";
-import { demoAdminAnnouncements } from "@/lib/mock";
 import { timeAgo } from "@/lib/utils";
 
 const levelMap = {
@@ -37,7 +36,6 @@ const levelMap = {
 
 export default function AnnouncementsPage() {
   const { data, mutate } = useSWR<AdminAnnouncement[]>("/admin/announcements", fetcher, {
-    fallbackData: demoAdminAnnouncements,
     revalidateOnFocus: false,
   });
   const [creating, setCreating] = useState(false);

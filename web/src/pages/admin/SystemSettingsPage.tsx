@@ -10,7 +10,6 @@ import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { PageHeader } from "@/components/dashboard/PageHeader";
 import { apiFetch, fetcher, type AdminSettings } from "@/lib/api";
-import { demoAdminSettings } from "@/lib/mock";
 
 function asString(v: unknown, fallback = ""): string {
   if (v === undefined || v === null) return fallback;
@@ -55,7 +54,6 @@ function parseSuffixList(raw: string): string[] {
 
 export default function SystemSettingsPage() {
   const { data, mutate } = useSWR<AdminSettings>("/admin/settings", fetcher, {
-    fallbackData: demoAdminSettings,
     revalidateOnFocus: false,
   });
   const settings = data ?? {};

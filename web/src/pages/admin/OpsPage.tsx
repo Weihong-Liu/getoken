@@ -6,22 +6,35 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { PageHeader } from "@/components/dashboard/PageHeader";
 import { StatCard } from "@/components/dashboard/StatCard";
 import { fetcher, type AdminOpsAccount, type AdminOpsSnapshot } from "@/lib/api";
-import { demoAdminOpsAccounts, demoAdminOpsSnapshot } from "@/lib/mock";
 import { formatNumber, timeAgo } from "@/lib/utils";
+
+const emptyOpsSnapshot: AdminOpsSnapshot = {
+  windowSeconds: 300,
+  qps: 0,
+  tps: 0,
+  requests: 0,
+  tokens: 0,
+  errors: 0,
+  errorRate: 0,
+  onlineAccounts: 0,
+  degradedAccounts: 0,
+  offlineAccounts: 0,
+  activeAccountConcurrency: 0,
+  activeUserConcurrency: 0,
+  updatedAt: new Date(0).toISOString(),
+};
 
 export default function OpsPage() {
   const { data: snapshot } = useSWR<AdminOpsSnapshot>("/admin/ops/snapshot?window=300", fetcher, {
-    fallbackData: demoAdminOpsSnapshot,
     refreshInterval: 5000,
     revalidateOnFocus: false,
   });
   const { data: accounts } = useSWR<AdminOpsAccount[]>("/admin/ops/accounts", fetcher, {
-    fallbackData: demoAdminOpsAccounts as unknown as AdminOpsAccount[],
     refreshInterval: 5000,
     revalidateOnFocus: false,
   });
 
-  const ops = snapshot ?? demoAdminOpsSnapshot;
+  const ops = snapshot ?? emptyOpsSnapshot;
   const rows = accounts ?? [];
 
   return (

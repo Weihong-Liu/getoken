@@ -1,4 +1,5 @@
 import { useMemo, useState, type ComponentType } from "react";
+import useSWR from "swr";
 import { Link } from "react-router-dom";
 import {
   ArrowRight,
@@ -16,6 +17,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
+import { fetcher, type ModelInfo } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
 type Plan = {
@@ -60,57 +62,31 @@ const plans: Plan[] = [
   },
 ];
 
-type Model = {
-  id: string;
-  vendor: string;
-  context: string;
-  input: number;
-  output: number;
-  group: "chat";
-};
-
-const models: Model[] = [
-  { id: "claude-sonnet-4-6", vendor: "Anthropic", context: "200K", input: 3.0, output: 15.0, group: "chat" },
-  { id: "claude-opus-4-7", vendor: "Anthropic", context: "200K", input: 15.0, output: 75.0, group: "chat" },
-  { id: "claude-haiku-4-5", vendor: "Anthropic", context: "200K", input: 0.8, output: 4.0, group: "chat" },
-  { id: "gpt-5", vendor: "OpenAI", context: "256K", input: 5.0, output: 20.0, group: "chat" },
-  { id: "gpt-5-mini", vendor: "OpenAI", context: "256K", input: 0.25, output: 2.0, group: "chat" },
-  { id: "gpt-4o", vendor: "OpenAI", context: "128K", input: 2.5, output: 10.0, group: "chat" },
-  { id: "gpt-4o-mini", vendor: "OpenAI", context: "128K", input: 0.15, output: 0.6, group: "chat" },
-  { id: "gemini-2.5-pro", vendor: "Google", context: "1M", input: 1.25, output: 10.0, group: "chat" },
-  { id: "gemini-2.5-flash", vendor: "Google", context: "1M", input: 0.075, output: 0.3, group: "chat" },
-  { id: "gemini-2.0-flash", vendor: "Google", context: "1M", input: 0.1, output: 0.4, group: "chat" },
-];
-
-const billingMetrics = [
-  { label: "余额有效期", value: "永久", hint: "充值后不清零", icon: Wallet, tone: "success" },
-  { label: "最低倍率", value: "0.2x", hint: "按模型独立计费", icon: CircleDollarSign, tone: "default" },
-  { label: "模型覆盖", value: "12+", hint: "Claude / GPT / Gemini", icon: Layers3, tone: "default" },
-  { label: "日志保留", value: "30天", hint: "标准版起", icon: Clock3, tone: "warning" },
-] satisfies PricingMetricProps[];
-
-const groupLabel: Record<Model["group"], string> = {
-  chat: "对话",
-};
-
-const groupHint: Record<Model["group"], string> = {
-  chat: "按 prompt + completion token 计费",
-};
+const EMPTY_MODELS: ModelInfo[] = [];
 
 export default function PricingPage() {
   const [query, setQuery] = useState("");
-  const group: Model["group"] = "chat";
+  const { data, isLoading } = useSWR<ModelInfo[]>("/public/models", fetcher, {
+    revalidateOnFocus: false,
+  });
+  const models = data ?? EMPTY_MODELS;
+  const vendorCount = new Set(models.map((model) => model.vendor).filter(Boolean)).size;
+  const billingMetrics = [
+    { label: "余额有效期", value: "永久", hint: "充值后不清零", icon: Wallet, tone: "success" },
+    { label: "最低倍率", value: "0.2x", hint: "按模型独立计费", icon: CircleDollarSign, tone: "default" },
+    { label: "模型覆盖", value: String(models.length), hint: `${vendorCount || 0} 个上游厂商`, icon: Layers3, tone: "default" },
+    { label: "日志保留", value: "30天", hint: "标准版起", icon: Clock3, tone: "warning" },
+  ] satisfies PricingMetricProps[];
 
   const filtered = useMemo(
     () =>
       models.filter(
         (model) =>
-          model.group === group &&
-          (query === "" ||
-            model.id.toLowerCase().includes(query.toLowerCase()) ||
-            model.vendor.toLowerCase().includes(query.toLowerCase())),
+          query === "" ||
+          model.id.toLowerCase().includes(query.toLowerCase()) ||
+          model.vendor.toLowerCase().includes(query.toLowerCase()),
       ),
-    [group, query],
+    [models, query],
   );
 
   return (
@@ -179,10 +155,10 @@ export default function PricingPage() {
               <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
                 <div>
                   <CardTitle>按模型查看价格</CardTitle>
-                  <CardDescription className="mt-1">{groupHint[group]}</CardDescription>
+                  <CardDescription className="mt-1">数据来自后端公开模型接口,只展示当前在线模型。</CardDescription>
                 </div>
                 <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
-                  <Badge variant="secondary">Claude / GPT / Gemini</Badge>
+                  <Badge variant="secondary">{models.length} 个在线模型</Badge>
                   <div className="relative w-full lg:w-72">
                     <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
                     <Input
@@ -209,21 +185,28 @@ export default function PricingPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filtered.map((model) => (
+                  {isLoading && (
+                    <TableRow>
+                      <TableCell colSpan={6}>
+                        <div className="py-10 text-center text-sm text-muted-foreground">正在加载模型价格</div>
+                      </TableCell>
+                    </TableRow>
+                  )}
+                  {!isLoading && filtered.map((model) => (
                     <TableRow key={model.id}>
                       <TableCell className="font-mono text-xs">{model.id}</TableCell>
                       <TableCell>{model.vendor}</TableCell>
-                      <TableCell className="text-muted-foreground">{model.context}</TableCell>
-                      <TableCell className="text-right font-medium">{model.input.toFixed(2)}</TableCell>
-                      <TableCell className="text-right font-medium">{model.output.toFixed(2)}</TableCell>
+                      <TableCell className="text-muted-foreground">{formatContext(model.context)}</TableCell>
+                      <TableCell className="text-right font-medium">{Number(model.inputPrice).toFixed(3)}</TableCell>
+                      <TableCell className="text-right font-medium">{Number(model.outputPrice).toFixed(3)}</TableCell>
                       <TableCell>
-                        <Badge variant="secondary">{groupLabel[model.group]}</Badge>
+                        <Badge variant="secondary">{formatGroups(model.allowedGroups)}</Badge>
                       </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
               </Table>
-              {filtered.length === 0 && (
+              {!isLoading && filtered.length === 0 && (
                 <div className="py-10 text-center text-sm text-muted-foreground">没有匹配的模型</div>
               )}
             </CardContent>
@@ -232,6 +215,16 @@ export default function PricingPage() {
       </section>
     </>
   );
+}
+
+function formatContext(context: number): string {
+  if (context >= 1_000_000) return `${Number(context / 1_000_000).toFixed(context % 1_000_000 === 0 ? 0 : 1)}M`;
+  if (context >= 1_000) return `${Number(context / 1_000).toFixed(context % 1_000 === 0 ? 0 : 1)}K`;
+  return context > 0 ? String(context) : "-";
+}
+
+function formatGroups(groups: string[]): string {
+  return groups.length > 0 ? groups.join(", ") : "默认";
 }
 
 type PricingMetricProps = {

@@ -5,7 +5,6 @@ import { PageHeader } from "@/components/dashboard/PageHeader";
 import { StatCard } from "@/components/dashboard/StatCard";
 import { Badge } from "@/components/ui/badge";
 import { fetcher, type AdminStats } from "@/lib/api";
-import { demoAdminStats } from "@/lib/mock";
 import { formatCurrency, formatNumber } from "@/lib/utils";
 import {
   BarChart,
@@ -19,12 +18,20 @@ import {
 
 type SeriesPoint = AdminStats["series"][number];
 
+const emptyAdminStats: AdminStats = {
+  users: 0,
+  tokens: 0,
+  requestsToday: 0,
+  revenueToday: 0,
+  series: [],
+  topModels: [],
+};
+
 export default function AdminOverviewPage() {
   const { data } = useSWR<AdminStats>("/admin/stats", fetcher, {
-    fallbackData: demoAdminStats,
     revalidateOnFocus: false,
   });
-  const stats = data ?? demoAdminStats;
+  const stats = data ?? emptyAdminStats;
   const totalRequests = stats.series.reduce((sum, item) => sum + item.requests, 0);
   const totalTokens = stats.series.reduce((sum, item) => sum + item.tokens, 0);
   const peak = stats.series.reduce(

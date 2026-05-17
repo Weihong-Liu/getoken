@@ -32,7 +32,6 @@ import {
   type AdminRedemptionBatch,
   type Page,
 } from "@/lib/api";
-import { demoAdminRedemptions } from "@/lib/mock";
 import { copyToClipboard, formatCurrency, timeAgo } from "@/lib/utils";
 
 const PAGE_SIZE = 20;
@@ -52,7 +51,6 @@ export default function RedemptionPage() {
   if (batchFilter) params.set("batch", batchFilter);
 
   const { data, mutate } = useSWR<Page<AdminRedemption>>(`/admin/redemption?${params}`, fetcher, {
-    fallbackData: { items: demoAdminRedemptions, total: demoAdminRedemptions.length, page, pageSize: PAGE_SIZE },
     revalidateOnFocus: false,
   });
 
