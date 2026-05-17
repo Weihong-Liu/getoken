@@ -291,9 +291,14 @@ func (h *Handler) forgot(c *gin.Context) {
 	if !h.verifyEmailCode(c, email, "forgot", req.EmailCode) {
 		return
 	}
+	// Anti-enumeration: if no user owns this email, still return the same
+	// success shape as a real reset. The code was already delivered to whoever
+	// owns the mailbox; surfacing "user not found" leaks registration state.
 	var u store.User
 	if err := h.s.DB.Where("email = ?", email).First(&u).Error; err != nil {
-		response.Fail(c, errkit.NotFound("用户不存在"))
+		h.log.Info("forgot for non-existent email; silent success",
+			zap.String("email", email), zap.String("ip", c.ClientIP()))
+		response.OK(c, gin.H{"reset": true})
 		return
 	}
 	hash, err := bcrypt.GenerateFromPassword([]byte(req.NewPassword), bcrypt.DefaultCost)
