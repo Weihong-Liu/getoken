@@ -62,8 +62,8 @@ const capabilities: Capability[] = [
   },
   {
     icon: Activity,
-    title: "状态页与告警",
-    desc: "持续探测渠道延迟和可用性,异常自动通知,公开状态页降低支持成本。",
+    title: "可用性面板与告警",
+    desc: "持续探测渠道延迟和可用性,异常自动通知,首页面板降低支持成本。",
   },
 ];
 
@@ -103,7 +103,7 @@ const faqs = [
   },
   {
     q: "渠道异常时会影响业务吗?",
-    a: "系统会持续检测上游可用性,遇到超时、限流或错误会按策略切换备用渠道,并在日志和状态页中记录。",
+    a: "系统会持续检测上游可用性,遇到超时、限流或错误会按策略切换备用渠道,并在日志和可用性面板中记录。",
   },
   {
     q: "后台功能够不够完整?",
@@ -141,7 +141,7 @@ export default function HomePage() {
 
             <p data-reveal data-delay="100" className="mx-auto mt-6 max-w-3xl text-base leading-8 text-muted-foreground md:text-lg">
               参考 tabcode.cc 的暗色科技感,但把中转站运营需要的能力补全:
-              模型聚合、渠道路由、API Key、充值计费、日志监控、状态页和管理后台。
+              模型聚合、渠道路由、API Key、充值计费、日志监控、可用性面板和管理后台。
             </p>
 
             <div data-reveal data-delay="200" className="mt-9 flex flex-col justify-center gap-3 sm:flex-row">
@@ -417,7 +417,7 @@ stream = true`}
                 从落地页到控制台,用户注册后立刻能接入。
               </h2>
               <p className="mt-4 max-w-2xl text-sm leading-7 text-muted-foreground">
-                首页负责建立信任,定价页负责转化,状态页负责透明,控制台负责留存和复购。
+                首页负责建立信任,定价页负责转化,可用性面板负责透明,控制台负责留存和复购。
               </p>
             </div>
             <div className="relative flex flex-col gap-3 sm:flex-row md:flex-col">

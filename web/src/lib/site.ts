@@ -10,14 +10,14 @@ export const site = {
   github: "https://github.com/",
   nav: [
     { label: "首页", href: "/" },
-    { label: "可用性检测", href: "/status" },
+    { label: "可用性检测", href: "/availability" },
     { label: "定价方案", href: "/pricing" },
     { label: "使用教程", href: "/tutorial" },
   ],
   footer: {
     product: [
       { label: "定价方案", href: "/pricing" },
-      { label: "可用性检测", href: "/status" },
+      { label: "可用性检测", href: "/availability" },
       { label: "使用教程", href: "https://docs.getoken.cc" },
       { label: "对话站", href: "https://chat.getoken.cc" },
     ],

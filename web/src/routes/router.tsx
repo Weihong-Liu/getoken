@@ -1,8 +1,8 @@
-import { createBrowserRouter } from "react-router-dom";
+import { createBrowserRouter, Navigate } from "react-router-dom";
 import { MarketingLayout } from "@/components/marketing/MarketingLayout";
+import AvailabilityPage from "@/pages/marketing/AvailabilityPage";
 import HomePage from "@/pages/marketing/HomePage";
 import PricingPage from "@/pages/marketing/PricingPage";
-import StatusPage from "@/pages/marketing/StatusPage";
 import TutorialPage from "@/pages/marketing/TutorialPage";
 import { AuthLayout } from "@/pages/auth/AuthLayout";
 import LoginPage from "@/pages/auth/LoginPage";
@@ -31,11 +31,12 @@ import SystemSettingsPage from "@/pages/admin/SystemSettingsPage";
 import NotFoundPage from "@/pages/NotFoundPage";
 
 export const router = createBrowserRouter([
-  { path: "/status", element: <StatusPage /> },
+  { path: "/status", element: <Navigate to="/availability" replace /> },
   {
     element: <MarketingLayout />,
     children: [
       { path: "/", element: <HomePage /> },
+      { path: "/availability", element: <AvailabilityPage /> },
       { path: "/pricing", element: <PricingPage /> },
       { path: "/tutorial", element: <TutorialPage /> },
     ],

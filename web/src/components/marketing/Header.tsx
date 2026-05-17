@@ -39,14 +39,7 @@ export function Header() {
               key={item.href}
               to={item.href}
               end={item.href === "/"}
-              className={({ isActive }) =>
-                cn(
-                  "rounded-lg px-4 py-2 text-sm font-medium transition-all",
-                  isActive
-                    ? "bg-primary/12 text-foreground shadow-sm ring-1 ring-primary/15"
-                    : "text-muted-foreground hover:bg-foreground/[0.04] hover:text-foreground dark:hover:bg-white/[0.07]",
-                )
-              }
+              className={({ isActive }) => navItemClass(isActive)}
             >
               {item.label}
             </NavLink>
@@ -111,5 +104,14 @@ export function Header() {
         </div>
       )}
     </header>
+  );
+}
+
+function navItemClass(active: boolean) {
+  return cn(
+    "rounded-lg px-4 py-2 text-sm font-medium transition-all",
+    active
+      ? "bg-primary/12 text-foreground shadow-sm ring-1 ring-primary/15"
+      : "text-muted-foreground hover:bg-foreground/[0.04] hover:text-foreground dark:hover:bg-white/[0.07]",
   );
 }
