@@ -33,9 +33,9 @@ const sections: Section[] = [
     id: "quick-start",
     label: "快速接入",
     title: "5 分钟跑通第一个请求",
-    intro: "注册账号 → 充值 → 创建 API Key → 把 base_url 指到 GeToken,就可以直接复用现有 OpenAI/Claude SDK。",
+    intro: "注册账号 → 充值 → 创建 API Key → 把 base_url 指到 GeToken,就可以直接复用现有 OpenAI / Claude / Gemini SDK。",
     steps: [
-      { title: "注册账号", desc: "邮箱注册即送 $1 额度,免充值即可联调全部模型。" },
+      { title: "注册账号", desc: "邮箱注册即送 $1 额度,免充值即可联调核心模型。" },
       { title: "创建 API Key", desc: "进入「控制台 → API Keys」,点击新建,记下 sk-getoken- 开头的密钥。" },
       { title: "修改 base_url", desc: "把上游 base_url 替换为 https://api.getoken.cc,鉴权头保持不变。" },
       { title: "发起调用", desc: "选好 model 参数(见模型列表),按原生 SDK 用法直接请求即可。" },
@@ -65,11 +65,11 @@ const sections: Section[] = [
     id: "openai",
     label: "OpenAI 兼容",
     title: "用 OpenAI SDK 调任意模型",
-    intro: "兼容 OpenAI Chat Completions / Responses / Embeddings / Images 协议,只需替换 base_url 与 api_key。",
+    intro: "兼容 OpenAI Chat Completions / Responses 协议,只需替换 base_url 与 api_key。",
     steps: [
       { title: "安装 SDK", desc: "pip install openai 或 npm i openai,版本无要求,最新即可。" },
       { title: "替换初始化参数", desc: "把 base_url 改为 https://api.getoken.cc/v1,api_key 改为 GeToken 的 key。" },
-      { title: "选择 model", desc: "支持 gpt-5 / claude-* / gemini-* / deepseek-* / qwen-* 等近百款模型,详见定价页。" },
+      { title: "选择 model", desc: "支持 gpt-* / claude-* / gemini-* 三条核心产品线,详见定价页。" },
     ],
     samples: [
       {
@@ -107,6 +107,33 @@ const resp = await client.chat.completions.create({
 for await (const chunk of resp) {
   process.stdout.write(chunk.choices[0]?.delta?.content ?? "");
 }`,
+      },
+    ],
+  },
+  {
+    id: "gemini",
+    label: "Gemini 原生",
+    title: "保留 Google Gemini v1beta 调用方式",
+    intro: "Gemini 原生路径会进入同一套鉴权、模型映射、账号池、计费和失败切换逻辑。",
+    steps: [
+      { title: "替换 base_url", desc: "把 Google SDK 的 endpoint 指到 https://api.getoken.cc/v1beta。" },
+      { title: "使用 GeToken Key", desc: "可放在 key 查询参数,也可以放在 x-api-key 或 Authorization Header。" },
+      { title: "选择 Gemini 模型", desc: "路径里的 gemini-* 会映射到后台配置的上游真实模型。" },
+    ],
+    samples: [
+      {
+        label: "curl",
+        language: "bash",
+        code: `curl "https://api.getoken.cc/v1beta/models/gemini-2.5-pro:generateContent?key=sk-getoken-xxxxxxxx" \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "contents": [
+      {
+        "role": "user",
+        "parts": [{ "text": "用一句话介绍 GeToken" }]
+      }
+    ]
+  }'`,
       },
     ],
   },
@@ -167,10 +194,18 @@ print(msg.content[0].text)`,
   -H "Authorization: Bearer sk-getoken-xxxxxxxx"
 
 # {
-#   "balance": "128.4300",
-#   "currency": "CNY",
-#   "usage_30d": "271.9200"
+#   "object": "account.balance",
+#   "balance": { "quota": 200, "used": 71.57, "remaining": 128.43 },
+#   "token": { "name": "prod", "remaining_quota": 128.43 }
 # }`,
+      },
+      {
+        label: "查询用量",
+        language: "bash",
+        code: `curl "https://api.getoken.cc/v1/usage?range=30d" \\
+  -H "Authorization: Bearer sk-getoken-xxxxxxxx"
+
+# 返回近 30 天按日、按模型聚合的请求数 / tokens / cost`,
       },
     ],
   },

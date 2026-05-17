@@ -34,6 +34,7 @@ func New(cfg *config.Config, s *store.Store, log *zap.Logger) *gin.Engine {
 	r.GET("/healthz", func(c *gin.Context) { response.OK(c, gin.H{"ok": true}) })
 
 	api := r.Group("/api")
+	adminHandler := admin.NewHandler(s, log)
 
 	// Outbound mailer is selected at boot from MAIL_PROVIDER env (resend / smtp / "").
 	// One Sender per process — implementations are safe for concurrent use.
@@ -43,6 +44,9 @@ func New(cfg *config.Config, s *store.Store, log *zap.Logger) *gin.Engine {
 	auth.NewHandler(cfg, s, log, mailer).Register(api.Group("/auth"))
 	publicGroup := api.Group("/public")
 	public.NewHandler(cfg, s, log).Register(publicGroup)
+	topupHandler := topup.NewHandler(cfg, s, log)
+	topupHandler.RegisterPublic(api.Group("/payment"))
+	adminHandler.RegisterPublic(api.Group("/oauth"))
 
 	// Authenticated user routes
 	authed := api.Group("")
@@ -51,18 +55,22 @@ func New(cfg *config.Config, s *store.Store, log *zap.Logger) *gin.Engine {
 	token.NewHandler(cfg, s, log).Register(authed.Group("/token"))
 	logmod.NewHandler(s, log).RegisterUser(authed.Group("/log"))
 	stats.NewHandler(s, log).Register(authed.Group("/stats"))
-	topup.NewHandler(s, log).Register(authed.Group("/topup"))
+	topupHandler.Register(authed.Group("/topup"))
 
 	// Admin routes
 	adminGroup := api.Group("/admin")
 	adminGroup.Use(middleware.Auth(cfg, s, middleware.AuthOpt{AdminOnly: true}))
-	admin.NewHandler(s, log).Register(adminGroup)
+	adminHandler.Register(adminGroup)
 	logmod.NewHandler(s, log).RegisterAdmin(adminGroup.Group("/logs"))
 	stats.NewHandler(s, log).RegisterAdmin(adminGroup.Group("/stats"))
 	audit.NewHandler(s, log).Register(adminGroup.Group("/audit"))
 
 	// /v1 LLM relay (OpenAI + Anthropic compatible).
-	relay.NewHandler(cfg, s, log).Register(r.Group("/v1"))
+	relayHandler := relay.NewHandler(cfg, s, log)
+	relayHandler.Register(r.Group("/v1"))
+	relayHandler.RegisterGeminiBeta(r.Group("/v1beta"))
+	relayHandler.RegisterAliases(r.Group(""))
+	relayHandler.RegisterAntigravity(r.Group("/antigravity"))
 
 	return r
 }

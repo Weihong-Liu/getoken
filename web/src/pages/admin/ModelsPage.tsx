@@ -167,7 +167,7 @@ export default function ModelsPage() {
                 <DialogHeader>
                   <DialogTitle>导入内置模型</DialogTitle>
                   <DialogDescription>
-                    一键批量灌入主流模型快照（OpenAI / Anthropic / Google / DeepSeek / Moonshot / Alibaba / xAI）。
+                    一键批量灌入核心模型快照（Claude / GPT / Gemini）。
                     新增条目会使用所选上游；已存在的模型可选择是否覆盖价格。
                   </DialogDescription>
                 </DialogHeader>

@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Gift, Wallet, Sparkles, Loader2 } from "lucide-react";
+import useSWR from "swr";
+import { Gift, Wallet, Sparkles, Loader2, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -8,16 +9,20 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/dashboard/PageHeader";
-import { apiFetch } from "@/lib/api";
+import { apiFetch, fetcher, type PaymentOrder } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
 const presets = [10, 30, 50, 100, 300, 500];
 
 export default function TopupPage() {
   const [amount, setAmount] = useState<number>(50);
-  const [channel, setChannel] = useState<"alipay" | "wxpay" | "usdt">("alipay");
+  const [channel] = useState<"alipay">("alipay");
+  const [order, setOrder] = useState<PaymentOrder | null>(null);
   const [redeeming, setRedeeming] = useState(false);
   const [paying, setPaying] = useState(false);
+  const { data: orders = [], mutate: refreshOrders } = useSWR<PaymentOrder[]>("/topup/orders", fetcher, {
+    revalidateOnFocus: false,
+  });
 
   async function onRedeem(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -47,13 +52,33 @@ export default function TopupPage() {
     }
     setPaying(true);
     try {
-      const res = await apiFetch<{ payUrl: string }>("/topup/order", {
+      const res = await apiFetch<{ order: PaymentOrder; payUrl: string; qrContent: string }>("/topup/order", {
         method: "POST",
         body: JSON.stringify({ amount, channel }),
       });
-      window.location.href = res.payUrl;
+      setOrder(res.order);
+      refreshOrders((current = []) => [res.order, ...current.filter((item) => item.id !== res.order.id)].slice(0, 50), false);
+      toast.success("订单已创建");
+      if (/^https?:\/\//i.test(res.payUrl)) {
+        window.location.href = res.payUrl;
+      }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "创建订单失败");
+    } finally {
+      setPaying(false);
+    }
+  }
+
+  async function onSimulatePaid() {
+    if (!order) return;
+    setPaying(true);
+    try {
+      const paid = await apiFetch<PaymentOrder>(`/topup/orders/${order.id}/simulate-paid`, { method: "POST" });
+      setOrder(paid);
+      refreshOrders((current = []) => [paid, ...current.filter((item) => item.id !== paid.id)].slice(0, 50), false);
+      toast.success(`支付完成,已入账 $${Number(paid.amount).toFixed(2)}`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "支付确认失败");
     } finally {
       setPaying(false);
     }
@@ -70,6 +95,7 @@ export default function TopupPage() {
         </TabsList>
 
         <TabsContent value="online">
+          <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_420px]">
           <Card>
             <CardHeader>
               <CardTitle>选择金额</CardTitle>
@@ -110,25 +136,10 @@ export default function TopupPage() {
 
               <div>
                 <Label>支付方式</Label>
-                <div className="mt-2 grid grid-cols-3 gap-2">
-                  {[
-                    { id: "alipay", label: "支付宝", color: "text-[#1677ff]" },
-                    { id: "wxpay", label: "微信", color: "text-[#07c160]" },
-                    { id: "usdt", label: "USDT", color: "text-[#26a17b]" },
-                  ].map((c) => (
-                    <button
-                      key={c.id}
-                      type="button"
-                      onClick={() => setChannel(c.id as typeof channel)}
-                      className={cn(
-                        "rounded-lg border py-3 text-sm font-medium transition-all hover:border-primary/40",
-                        channel === c.id ? "border-primary bg-primary/5" : "bg-card",
-                        c.color,
-                      )}
-                    >
-                      {c.label}
-                    </button>
-                  ))}
+                <div className="mt-2">
+                  <div className="rounded-lg border border-primary bg-primary/5 px-4 py-3 text-sm font-medium text-primary">
+                    支付宝
+                  </div>
                 </div>
               </div>
 
@@ -136,11 +147,67 @@ export default function TopupPage() {
                 {paying && <Loader2 className="size-4 animate-spin" />}
                 立即充值 ${amount}
               </Button>
+              {order && (
+                <div className="rounded-lg border bg-muted/30 p-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <div className="text-sm font-medium">订单 {order.orderNo}</div>
+                      <div className="mt-1 text-xs text-muted-foreground">
+                        {order.channel} · {order.status} · ${Number(order.amount).toFixed(2)}
+                      </div>
+                    </div>
+                    {order.status === "COMPLETED" ? (
+                      <Badge variant="success"><CheckCircle2 className="size-3.5" />已入账</Badge>
+                    ) : !import.meta.env.DEV ? (
+                      <Badge variant="outline">等待支付宝回调</Badge>
+                    ) : (
+                      <Button size="sm" variant="outline" onClick={onSimulatePaid} disabled={paying}>
+                        {paying && <Loader2 className="size-4 animate-spin" />}
+                        开发环境模拟支付
+                      </Button>
+                    )}
+                  </div>
+                  <code className="mt-3 block rounded-md bg-background px-3 py-2 text-xs text-muted-foreground">{order.qrContent}</code>
+                </div>
+              )}
               <p className="text-xs text-muted-foreground text-center">
                 * 充值即视为同意服务条款。如有问题请联系客服。
               </p>
             </CardContent>
           </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle>支付订单</CardTitle>
+              <CardDescription>最近 50 笔支付宝充值记录。</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {orders.length === 0 ? (
+                <div className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
+                  暂无充值订单
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {orders.slice(0, 8).map((item) => (
+                    <div key={item.id} className="rounded-lg border bg-card/60 p-3">
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-medium">{item.orderNo}</p>
+                          <p className="mt-1 text-xs text-muted-foreground">
+                            {formatDate(item.createdAt)} · {item.channel === "alipay" ? "支付宝" : item.channel}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-sm font-semibold">${Number(item.amount).toFixed(2)}</p>
+                          <OrderStatusBadge status={item.status} />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+          </div>
         </TabsContent>
 
         <TabsContent value="redeem">
@@ -166,4 +233,27 @@ export default function TopupPage() {
       </Tabs>
     </>
   );
+}
+
+function OrderStatusBadge({ status }: { status: PaymentOrder["status"] }) {
+  const label =
+    status === "COMPLETED" || status === "PAID"
+      ? "已支付"
+      : status === "PENDING"
+        ? "待支付"
+        : status === "CANCELLED"
+          ? "已取消"
+          : status === "EXPIRED"
+            ? "已过期"
+            : status === "FAILED"
+              ? "失败"
+              : status;
+  const variant = status === "COMPLETED" || status === "PAID" ? "success" : status === "PENDING" ? "outline" : "secondary";
+  return <Badge variant={variant}>{label}</Badge>;
+}
+
+function formatDate(raw: string) {
+  const date = new Date(raw);
+  if (Number.isNaN(date.getTime())) return raw;
+  return date.toLocaleString("zh-CN", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" });
 }

@@ -55,12 +55,18 @@ func (h *Handler) list(c *gin.Context) {
 }
 
 type createReq struct {
-	Name           string `json:"name" binding:"required,max=64"`
-	GroupID        uint64 `json:"groupId"`
-	RemainQuota    string `json:"remainQuota"`
-	UnlimitedQuota bool   `json:"unlimitedQuota"`
-	ExpiredAt      int64  `json:"expiredAt"` // unix seconds; 0 = never
-	IPWhitelist    string `json:"ipWhitelist"`
+	Name             string `json:"name" binding:"required,max=64"`
+	GroupID          uint64 `json:"groupId"`
+	RemainQuota      string `json:"remainQuota"`
+	UnlimitedQuota   bool   `json:"unlimitedQuota"`
+	ExpiredAt        int64  `json:"expiredAt"` // unix seconds; 0 = never
+	IPWhitelist      string `json:"ipWhitelist"`
+	AllowedModels    string `json:"allowedModels"`
+	ConcurrencyLimit int    `json:"concurrencyLimit"`
+	QPSLimit         int    `json:"qpsLimit"`
+	TPSLimit         int    `json:"tpsLimit"`
+	RPMLimit         int    `json:"rpmLimit"`
+	TPMLimit         int    `json:"tpmLimit"`
 }
 
 func (h *Handler) create(c *gin.Context) {
@@ -81,15 +87,21 @@ func (h *Handler) create(c *gin.Context) {
 	}
 	key := idgen.APIKey()
 	t := store.Token{
-		UserID:         u.ID,
-		Name:           req.Name,
-		KeyHash:        auth.HashAPIKey(h.cfg.JWTSecret, key),
-		KeyPrefix:      key[:14],
-		Status:         1,
-		RemainQuota:    quota,
-		UnlimitedQuota: req.UnlimitedQuota,
-		GroupID:        defaultGroup(req.GroupID, u.GroupID),
-		IPWhitelist:    req.IPWhitelist,
+		UserID:           u.ID,
+		Name:             req.Name,
+		KeyHash:          auth.HashAPIKey(h.cfg.JWTSecret, key),
+		KeyPrefix:        key[:14],
+		Status:           1,
+		RemainQuota:      quota,
+		UnlimitedQuota:   req.UnlimitedQuota,
+		GroupID:          defaultGroup(req.GroupID, u.GroupID),
+		IPWhitelist:      req.IPWhitelist,
+		AllowedModels:    req.AllowedModels,
+		ConcurrencyLimit: nonNegative(req.ConcurrencyLimit),
+		QPSLimit:         nonNegative(req.QPSLimit),
+		TPSLimit:         nonNegative(req.TPSLimit),
+		RPMLimit:         nonNegative(req.RPMLimit),
+		TPMLimit:         nonNegative(req.TPMLimit),
 	}
 	if req.ExpiredAt > 0 {
 		ts := time.Unix(req.ExpiredAt, 0)
@@ -103,13 +115,19 @@ func (h *Handler) create(c *gin.Context) {
 }
 
 type updateReq struct {
-	Name           *string `json:"name"`
-	Status         *int    `json:"status"`
-	RemainQuota    *string `json:"remainQuota"`
-	UnlimitedQuota *bool   `json:"unlimitedQuota"`
-	ExpiredAt      *int64  `json:"expiredAt"`
-	IPWhitelist    *string `json:"ipWhitelist"`
-	GroupID        *uint64 `json:"groupId"`
+	Name             *string `json:"name"`
+	Status           *int    `json:"status"`
+	RemainQuota      *string `json:"remainQuota"`
+	UnlimitedQuota   *bool   `json:"unlimitedQuota"`
+	ExpiredAt        *int64  `json:"expiredAt"`
+	IPWhitelist      *string `json:"ipWhitelist"`
+	AllowedModels    *string `json:"allowedModels"`
+	GroupID          *uint64 `json:"groupId"`
+	ConcurrencyLimit *int    `json:"concurrencyLimit"`
+	QPSLimit         *int    `json:"qpsLimit"`
+	TPSLimit         *int    `json:"tpsLimit"`
+	RPMLimit         *int    `json:"rpmLimit"`
+	TPMLimit         *int    `json:"tpmLimit"`
 }
 
 func (h *Handler) update(c *gin.Context) {
@@ -154,8 +172,26 @@ func (h *Handler) update(c *gin.Context) {
 	if req.IPWhitelist != nil {
 		updates["ip_whitelist"] = *req.IPWhitelist
 	}
+	if req.AllowedModels != nil {
+		updates["allowed_models"] = *req.AllowedModels
+	}
 	if req.GroupID != nil {
 		updates["group_id"] = *req.GroupID
+	}
+	if req.ConcurrencyLimit != nil {
+		updates["concurrency_limit"] = nonNegative(*req.ConcurrencyLimit)
+	}
+	if req.QPSLimit != nil {
+		updates["qps_limit"] = nonNegative(*req.QPSLimit)
+	}
+	if req.TPSLimit != nil {
+		updates["tps_limit"] = nonNegative(*req.TPSLimit)
+	}
+	if req.RPMLimit != nil {
+		updates["rpm_limit"] = nonNegative(*req.RPMLimit)
+	}
+	if req.TPMLimit != nil {
+		updates["tpm_limit"] = nonNegative(*req.TPMLimit)
 	}
 	if len(updates) > 0 {
 		if err := h.s.DB.Model(&t).Updates(updates).Error; err != nil {
@@ -190,4 +226,11 @@ func defaultGroup(want, fallback uint64) uint64 {
 		return fallback
 	}
 	return 1
+}
+
+func nonNegative(v int) int {
+	if v < 0 {
+		return 0
+	}
+	return v
 }

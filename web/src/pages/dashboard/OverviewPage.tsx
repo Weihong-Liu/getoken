@@ -131,7 +131,7 @@ export default function OverviewPage() {
         <div className="grid gap-4 sm:grid-cols-2">
           <StatCard title="今日消费" value={formatCurrency(stats.usedToday)} icon={TrendingUp} tone="warning" hint="较昨日平稳" />
           <StatCard title="今日请求" value={formatNumber(stats.requestsToday)} icon={Activity} tone="success" hint="实时聚合" />
-          <StatCard title="可用模型" value="80+" icon={Cpu} hint="对话 / 图像 / 音频" />
+          <StatCard title="可用模型" value="12+" icon={Cpu} hint="Claude / GPT / Gemini" />
           <StatCard title="路由状态" value="99.92%" icon={RadioTower} tone="success" hint="多上游自动切换" />
         </div>
       </section>

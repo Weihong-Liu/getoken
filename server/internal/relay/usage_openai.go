@@ -13,26 +13,49 @@ import (
 type openaiUsage struct {
 	PromptTokens        int `json:"prompt_tokens"`
 	CompletionTokens    int `json:"completion_tokens"`
+	InputTokens         int `json:"input_tokens"`
+	OutputTokens        int `json:"output_tokens"`
 	TotalTokens         int `json:"total_tokens"`
 	PromptTokensDetails struct {
 		CachedTokens int `json:"cached_tokens"`
 	} `json:"prompt_tokens_details"`
+	InputTokensDetails struct {
+		CachedTokens int `json:"cached_tokens"`
+	} `json:"input_tokens_details"`
 	CompletionTokensDetails struct {
 		ReasoningTokens int `json:"reasoning_tokens"`
 	} `json:"completion_tokens_details"`
+	OutputTokensDetails struct {
+		ReasoningTokens int `json:"reasoning_tokens"`
+	} `json:"output_tokens_details"`
 }
 
 func (u openaiUsage) toBilling() (billing.Tokens, int) {
 	cached := u.PromptTokensDetails.CachedTokens
-	in := u.PromptTokens - cached
+	if cached == 0 {
+		cached = u.InputTokensDetails.CachedTokens
+	}
+	input := u.PromptTokens
+	if input == 0 {
+		input = u.InputTokens
+	}
+	output := u.CompletionTokens
+	if output == 0 {
+		output = u.OutputTokens
+	}
+	reasoning := u.CompletionTokensDetails.ReasoningTokens
+	if reasoning == 0 {
+		reasoning = u.OutputTokensDetails.ReasoningTokens
+	}
+	in := input - cached
 	if in < 0 {
 		in = 0
 	}
 	return billing.Tokens{
 		Input:       in,
-		Output:      u.CompletionTokens,
+		Output:      output,
 		CachedInput: cached,
-	}, u.CompletionTokensDetails.ReasoningTokens
+	}, reasoning
 }
 
 // parseOpenAIUsage：JSON 响应里挖 usage。第二个返回值是 reasoning_tokens（推理思考 token 数）。
@@ -67,16 +90,23 @@ func parseOpenAIStreamUsage(body []byte) (billing.Tokens, int, bool) {
 			continue
 		}
 		var chunk struct {
-			Usage *openaiUsage `json:"usage"`
+			Usage    *openaiUsage `json:"usage"`
+			Response *struct {
+				Usage *openaiUsage `json:"usage"`
+			} `json:"response"`
 		}
 		if err := json.Unmarshal(payload, &chunk); err != nil {
 			continue
 		}
-		if chunk.Usage == nil {
+		usage := chunk.Usage
+		if usage == nil && chunk.Response != nil {
+			usage = chunk.Response.Usage
+		}
+		if usage == nil {
 			continue
 		}
 		// 一些供应商在每个增量里都带 usage，留最后一个就行。
-		last, lastReasoning = chunk.Usage.toBilling()
+		last, lastReasoning = usage.toBilling()
 		found = true
 	}
 	return last, lastReasoning, found

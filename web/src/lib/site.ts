@@ -2,7 +2,7 @@ export const site = {
   name: "GeToken",
   tagline: "高速聚合中转站",
   description:
-    "一个入口聚合 Claude、GPT、Gemini、DeepSeek 等多家上游,统一计费、可观测、按需路由。为 AI 开发者而生。",
+    "一个入口聚合 Claude、GPT、Gemini 三条核心上游,统一计费、可观测、按需路由。为 AI 开发者而生。",
   domain: "getoken.cc",
   email: "support@getoken.cc",
   docs: "https://docs.getoken.cc",

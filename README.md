@@ -109,8 +109,8 @@ cd web && pnpm install && pnpm dev
 ### 4. 首次配置流程
 
 1. 登录管理员账号
-2. 「上游网关」→ 新增 upstream（写 sub2api / new-api / OpenAI 的 baseUrl + apiKey；**baseUrl 不带 `/v1`**）
-3. 「模型管理」→ 点「导入内置模型」，选刚建的 upstream，一键灌入 31 个主流模型
+2. 「上游网关」→ 新增 upstream（写 sub2api / new-api / OpenAI 的 baseUrl + apiKey；baseUrl 带不带 `/v1` 都会自动兼容）
+3. 「模型管理」→ 点「导入内置模型」，选刚建的 upstream，一键灌入 Claude / GPT / Gemini 核心模型
 4. 「系统设置 → 邀请返利」→ 填消费返利百分比（如 `5` 表示 5%）保存
 5. 「卡密管理」→ 批量生成几张卡密
 6. 普通用户兑换卡密 → 在 `/dashboard/tokens` 建 `sk-getoken-*` 密钥 → 用它发请求
@@ -131,6 +131,8 @@ cd web && pnpm install && pnpm dev
 | GET | `/api/public/models` | 公开模型清单（用于定价页等） |
 | GET | `/api/public/status` | 上游网关健康度（脱敏） |
 | GET | `/api/public/announcements` | 已发布公告 |
+| POST | `/api/payment/alipay/notify` | 支付宝异步通知回调（RSA2 验签后入账） |
+| GET/POST | `/api/oauth/upstream/callback` | 上游账号 OAuth 授权回调（state 校验后写入账号池 token） |
 
 ### 已登录用户
 
@@ -140,11 +142,14 @@ cd web && pnpm install && pnpm dev
 | GET·PUT | `/api/user/self` | 当前用户 / 改昵称 |
 | PUT | `/api/user/password` | 改密码 |
 | GET | `/api/user/referrals` | 邀请码 + 累计返利 + 邀请明细 |
-| GET·POST·PUT·DELETE | `/api/token` | API Key CRUD（明文 key 仅创建时一次返回） |
+| GET·POST·PUT·DELETE | `/api/token` | API Key CRUD（明文 key 仅创建时一次返回；支持模型白名单、IP 白名单、Key 级限流） |
 | GET | `/api/log[?type=&model=&status=&page=&pageSize=]` | 调用日志（默认仅 type=request） |
 | GET | `/api/log/export` | 调用日志 CSV 流式下载 |
 | GET | `/api/stats?range=14d` | 余额 / 今日消费 / 近 N 天曲线 / Top 模型 |
 | POST | `/api/topup/redeem` | 卡密兑换 |
+| POST | `/api/topup/order` | 创建支付宝在线充值订单（`alipay.trade.page.pay` RSA2 签名） |
+| GET | `/api/topup/orders` | 当前用户充值订单 |
+| POST | `/api/topup/orders/:id/cancel` | 取消待支付订单 |
 
 ### 管理员（role=admin）
 
@@ -153,8 +158,19 @@ cd web && pnpm install && pnpm dev
 | GET | `/api/admin/stats?range=14d` | 平台总览（用户数、token 数、收入、请求量） |
 | GET·POST·PUT·DELETE | `/api/admin/users[/:id]` | 用户管理（角色、状态、额度、密码） |
 | GET·POST·PUT·DELETE | `/api/admin/upstreams[/:id]` | 上游网关（new-api / sub2api / 官方端点） |
+| POST | `/api/admin/upstreams/bulk-status` | 批量启用 / 禁用上游 |
+| POST | `/api/admin/upstreams/:id/check` | 上游连通性和模型列表检测，连续失败可自动离线 |
+| POST | `/api/admin/upstreams/:id/sync-models` | 从上游 `/models` 同步模型映射和内置价格快照 |
+| GET·POST·PUT·DELETE | `/api/admin/upstream-accounts[/:id]` | 上游账号池 / Key 池（API Key、OAuth、Setup Token、代理、限流） |
+| POST | `/api/admin/upstream-accounts/:id/check` | 单账号健康检测 |
+| POST | `/api/admin/upstream-accounts/:id/recover` | 清除账号冷却并恢复调度 |
+| POST | `/api/admin/upstream-accounts/:id/oauth/start` | 生成上游账号 OAuth 授权链接 |
+| POST | `/api/admin/upstream-accounts/:id/refresh-oauth` | 使用 refresh token 刷新 OAuth access token |
+| GET | `/api/admin/ops/snapshot` | 运行监控快照（QPS / TPS / 错误率 / 并发） |
+| GET | `/api/admin/ops/accounts` | 账号池实时负载 |
+| GET | `/api/admin/ops/errors` | 最近错误请求 |
 | GET·POST·PUT·DELETE | `/api/admin/models[/:id]` | 模型映射 + 价格 |
-| POST | `/api/admin/models/seed-defaults` | 一键导入 31 个内置模型价格 |
+| POST | `/api/admin/models/seed-defaults` | 一键导入 Claude / GPT / Gemini 内置模型价格 |
 | GET·POST·PUT·DELETE | `/api/admin/groups[/:id]` | 用户分组与倍率 |
 | GET | `/api/admin/logs[/export]` | 全站调用日志 + CSV |
 | GET·POST·DELETE | `/api/admin/redemption[/:id]` | 卡密 CRUD（批量生成） |
@@ -163,17 +179,34 @@ cd web && pnpm install && pnpm dev
 | GET·PUT | `/api/admin/settings` | 系统设置（KV + JSONB） |
 | GET | `/api/admin/audit[?action=&actorId=&targetUserId=]` | 审计日志（登录、写操作、兑换、返利） |
 
-### LLM 转发（OpenAI / Anthropic 兼容）
+### LLM 转发（OpenAI / Anthropic / Gemini 兼容）
 
 | 方法 | 路径 | 说明 |
 |---|---|---|
+| GET | `/v1/models` | OpenAI 兼容的模型列表（按用户分组过滤） |
+| GET | `/v1/models/{model}` | OpenAI 兼容的模型详情 |
+| GET | `/v1/usage?range=30d` | 当前 API Key 对应用户的近 N 天用量汇总 |
+| GET | `/v1/account/balance` | 当前 API Key 对应的账户余额与 Key 剩余额度 |
 | POST | `/v1/chat/completions` | OpenAI Chat（含 SSE 流式） |
 | POST | `/v1/completions` | OpenAI Completions |
-| POST | `/v1/embeddings` | OpenAI Embeddings |
+| POST | `/v1/responses` | OpenAI Responses（Codex / 新版 OpenAI SDK 常用，含 SSE usage 结算） |
+| POST | `/responses` | Codex / Responses 根路径别名（转入 `/v1/responses` 计费链路） |
+| POST | `/backend-api/codex/responses` | Codex CLI ChatGPT 风格别名（转入 `/v1/responses` 计费链路） |
+| POST | `/v1/images/generations` | OpenAI Images 兼容透传（无 usage 时按预估结算） |
 | POST | `/v1/messages` | Anthropic Messages（含 SSE 流式） |
-| GET | `/v1/models` | OpenAI 兼容的模型列表（按用户分组过滤） |
+| POST | `/v1/messages/count_tokens` | Anthropic count_tokens 本地预估（不扣费） |
+| GET | `/v1beta/models` | Gemini v1beta 模型列表 |
+| GET | `/v1beta/models/{model}` | Gemini v1beta 模型详情 |
+| POST | `/v1beta/models/{model}:generateContent` | Gemini v1beta 原生调用 |
+| POST | `/v1beta/models/{model}:streamGenerateContent` | Gemini v1beta 原生流式调用 |
+| POST | `/antigravity/v1/messages` | Antigravity Claude 专用入口别名 |
+| POST | `/antigravity/v1beta/models/{model}:generateContent` | Antigravity Gemini 专用入口别名 |
 
 **鉴权头**：`Authorization: Bearer sk-getoken-...` 或 `x-api-key: sk-getoken-...`（两种都支持）
+
+**账号池调度**：上游账号池支持 API Key / OAuth / Setup Token 账号类型、优先级 / 权重、RPM / 并发限制、代理 URL、`session_id` 粘性会话；用户和单个 API Key 均可设置并发、QPS、TPS、RPM、TPM；Token 还可配置模型白名单。429、401/403、5xx 或网络错误会先冷却故障账号并切换下一个账号。
+
+**上游 OAuth**：后台系统设置里配置 `oauth.<provider>.clientId / clientSecret / authUrl / tokenUrl / redirectUrl / scopes`，账号池里点击「授权 OAuth」会生成带随机 state 的授权链接，回调写入 access_token / refresh_token；之后可用「刷新 OAuth」手动续期。
 
 **计费公式**：
 
@@ -191,11 +224,13 @@ cost(USD) = ( input × inputPrice
 ## 数据模型
 
 - `users`：邮箱、密码哈希、角色、状态、分组、quota / used_quota、邀请码
-- `tokens`：每张 API key，key_hash 存 HMAC-SHA256，前缀展示
+- `tokens`：每张 API key，key_hash 存 HMAC-SHA256，前缀展示，支持额度、过期、IP 白名单、模型白名单和 Key 级限流
 - `logs`：每次 API 调用一条，含 prompt / cached / cacheCreation / completion / reasoning tokens + quota
 - `audit_logs`：登录、管理员变更、兑换、返利等关键事件
-- `upstreams`：上游网关 (name, baseUrl, apiKey, priority, weight)
+- `upstreams`：上游网关 (name, baseUrl, apiKey, priority, weight, tags, auto_disable)
+- `upstream_accounts`：上游账号 / Key 池，含账号类型、OAuth Token、代理、优先级、权重、RPM / 并发限制、健康状态、粘性会话与故障冷却
 - `model_mappings`：对外 modelId → upstreamId + upstreamModelName + 价格四件套
+- `payment_orders`：在线充值订单，覆盖 pending / completed / cancelled / failed 等状态
 - `groups`：分组名称 + 倍率
 - `redemption_codes`：卡密（批次、面额、状态）
 - `referrals`：邀请人 → 被邀请人 → 返利金额

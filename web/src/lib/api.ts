@@ -25,7 +25,32 @@ export type Token = {
   expiredAt: string | null;
   groupId: number;
   ipWhitelist: string;
+  allowedModels: string;
+  concurrencyLimit: number;
+  qpsLimit: number;
+  tpsLimit: number;
+  rpmLimit: number;
+  tpmLimit: number;
   createdAt: string;
+};
+
+export type PaymentOrder = {
+  id: number;
+  orderNo: string;
+  userId: number;
+  provider: string;
+  channel: string;
+  amount: number;
+  currency: string;
+  status: "PENDING" | "PAID" | "COMPLETED" | "EXPIRED" | "CANCELLED" | "FAILED" | "REFUND_REQUESTED" | "REFUNDING" | "REFUNDED";
+  payUrl: string;
+  qrContent: string;
+  providerRef: string;
+  expiredAt: string | null;
+  paidAt: string | null;
+  completedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
 };
 
 export type LogEntry = {
@@ -99,6 +124,7 @@ let demoUser: User = {
   inviteCode: "GT-ADMIN",
   createdAt: new Date(Date.now() - 86400000 * 30).toISOString(),
 };
+let demoPaymentOrders: PaymentOrder[] = [];
 
 export class ApiError extends Error {
   status: number;
@@ -210,8 +236,60 @@ function resolveDemoRequest<T>(
     return { handled: true, data: { balance: demoUser.quota } as T };
   }
 
+  if (path === "/topup/orders" && method === "GET") {
+    return { handled: true, data: demoPaymentOrders as T };
+  }
+
   if (path === "/topup/order" && method === "POST") {
-    return { handled: true, data: { payUrl: "/dashboard/topup" } as T };
+    const order: PaymentOrder = {
+      id: Date.now(),
+      orderNo: `pay_demo_${Date.now()}`,
+      userId: demoUser.id,
+      provider: "alipay",
+      channel: "alipay",
+      amount: Number(body.amount || 50),
+      currency: "USD",
+      status: "PENDING",
+      payUrl: "/dashboard/topup",
+      qrContent: `GETOKEN:alipay:demo:${Number(body.amount || 50).toFixed(2)}`,
+      providerRef: "",
+      expiredAt: new Date(Date.now() + 30 * 60_000).toISOString(),
+      paidAt: null,
+      completedAt: null,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    demoPaymentOrders = [order, ...demoPaymentOrders].slice(0, 50);
+    return { handled: true, data: { order, payUrl: order.payUrl, qrContent: order.qrContent } as T };
+  }
+
+  if (path.includes("/topup/orders/") && path.endsWith("/simulate-paid") && method === "POST") {
+    const id = Number(path.match(/\/topup\/orders\/(\\d+)\/simulate-paid$/)?.[1]);
+    const existing = demoPaymentOrders.find((item) => item.id === id);
+    const paidAt = new Date().toISOString();
+    const paid: PaymentOrder = {
+      ...(existing ?? {
+        id: Date.now(),
+        orderNo: `pay_demo_${Date.now()}`,
+        userId: demoUser.id,
+        provider: "alipay",
+        channel: "alipay",
+        amount: 50,
+        currency: "USD",
+        payUrl: "/dashboard/topup",
+        qrContent: "GETOKEN:alipay:demo:50.00",
+        expiredAt: null,
+        createdAt: paidAt,
+      }),
+      status: "COMPLETED",
+      providerRef: "simulated",
+      paidAt,
+      completedAt: paidAt,
+      updatedAt: paidAt,
+    };
+    demoPaymentOrders = [paid, ...demoPaymentOrders.filter((item) => item.id !== paid.id)].slice(0, 50);
+    demoUser = { ...demoUser, quota: demoUser.quota + Number(paid.amount || 0) };
+    return { handled: true, data: paid as T };
   }
 
   return { handled: false };
@@ -249,6 +327,11 @@ export type AdminUser = {
   groupId: number;
   quota: number;
   usedQuota: number;
+  concurrencyLimit: number;
+  qpsLimit: number;
+  tpsLimit: number;
+  rpmLimit: number;
+  tpmLimit: number;
   inviteCode: string;
   createdAt: string;
 };
@@ -259,14 +342,78 @@ export type AdminUpstream = {
   type: string;
   baseUrl: string;
   status: "online" | "degraded" | "offline";
+  tags: string;
   priority: number;
   weight: number;
+  autoDisable: boolean;
+  failureCount: number;
+  failureThreshold: number;
   latencyMs: number;
   lastCheckAt: string | null;
+  lastError?: string;
   note: string;
   apiKeyMask: string;
   createdAt: string;
   updatedAt: string;
+};
+
+export type AdminUpstreamAccount = {
+  id: number;
+  upstreamId: number;
+  name: string;
+  accountType: "apikey" | "oauth" | "oauth_code" | "oauth_setup_token" | "setup-token" | "upstream" | "service_account";
+  status: "online" | "degraded" | "offline" | "cooling";
+  priority: number;
+  weight: number;
+  rpmLimit: number;
+  tpmLimit: number;
+  concurrencyLimit: number;
+  latencyMs: number;
+  lastUsedAt: string | null;
+  lastCheckAt: string | null;
+  oauthExpiresAt: string | null;
+  proxyUrl: string;
+  lastError?: string;
+  note: string;
+  apiKeyMask: string;
+  oauthAccessTokenMask: string;
+  oauthRefreshTokenMask: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type AdminOpsSnapshot = {
+  windowSeconds: number;
+  qps: number;
+  tps: number;
+  requests: number;
+  tokens: number;
+  errors: number;
+  errorRate: number;
+  onlineAccounts: number;
+  degradedAccounts: number;
+  offlineAccounts: number;
+  activeAccountConcurrency: number;
+  activeUserConcurrency: number;
+  updatedAt: string;
+};
+
+export type AdminOpsAccount = {
+  id: number;
+  upstreamId: number;
+  upstreamName: string;
+  name: string;
+  status: "online" | "degraded" | "offline" | "cooling";
+  priority: number;
+  weight: number;
+  rpmLimit: number;
+  tpmLimit: number;
+  concurrencyLimit: number;
+  currentConcurrency: number;
+  latencyMs: number;
+  lastUsedAt: string | null;
+  lastCheckAt: string | null;
+  lastError: string;
 };
 
 export type AdminModelMapping = {

@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/shopspring/decimal"
 	"gorm.io/gorm"
 
 	"github.com/puppet/getoken/server/internal/auth"
@@ -72,18 +71,6 @@ func TokenAuth(cfg *config.Config, s *store.Store) gin.HandlerFunc {
 			return
 		}
 
-		// 余额初步校验：token 自身限额 + 用户额度均要 > 0。
-		if !tok.UnlimitedQuota && !tok.RemainQuota.GreaterThan(decimal.Zero) {
-			writeRelayError(c, http.StatusPaymentRequired, "insufficient_quota",
-				"token_quota_exhausted", "API key has no remaining quota")
-			return
-		}
-		if usr.Quota.Sub(usr.UsedQuota).LessThanOrEqual(decimal.Zero) {
-			writeRelayError(c, http.StatusPaymentRequired, "insufficient_quota",
-				"user_quota_exhausted", "user account has no remaining quota")
-			return
-		}
-
 		c.Set(ctxToken, &tok)
 		c.Set(ctxUser, &usr)
 		c.Next()
@@ -93,6 +80,9 @@ func TokenAuth(cfg *config.Config, s *store.Store) gin.HandlerFunc {
 // extractAPIKey 同时支持 OpenAI 风格 (Authorization: Bearer …) 与
 // Anthropic 风格 (x-api-key: …)。
 func extractAPIKey(c *gin.Context) string {
+	if v := strings.TrimSpace(c.Query("key")); v != "" {
+		return v
+	}
 	if v := strings.TrimSpace(c.GetHeader("x-api-key")); v != "" {
 		return v
 	}

@@ -38,7 +38,7 @@ const capabilities: Capability[] = [
   {
     icon: Network,
     title: "统一中转入口",
-    desc: "OpenAI 兼容协议,Claude / Gemini / DeepSeek 等主流接口统一接入。",
+    desc: "OpenAI 兼容协议,Claude / GPT / Gemini 三条核心线路统一接入。",
   },
   {
     icon: Workflow,
@@ -83,16 +83,13 @@ const routeRows = [
 const models = [
   "Claude Code",
   "Claude Sonnet 4.6",
+  "Claude Opus 4.7",
   "GPT-5",
+  "GPT-5 Mini",
   "GPT-4o",
   "Gemini 2.5 Pro",
-  "DeepSeek V3",
-  "Kimi K2",
-  "Qwen 3 Max",
-  "GLM-4.6",
-  "Sora-2",
-  "Whisper",
-  "Embedding",
+  "Gemini 2.5 Flash",
+  "Gemini 2.0 Flash",
 ];
 
 const faqs = [
@@ -350,10 +347,10 @@ stream = true`}
         <SectionHeading
           eyebrow="模型矩阵"
           title="主流模型和场景,统一放进一个余额池"
-          desc="对话、代码、图像、视频、语音和 embedding 都可以按分组开放给不同用户。"
+          desc="先聚焦 Claude Code、GPT 和 Gemini 三类高频模型,按分组开放给不同用户。"
         />
 
-        <div data-reveal data-delay="200" className="mt-10 grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6">
+        <div data-reveal data-delay="200" className="mt-10 grid grid-cols-2 gap-3 md:grid-cols-4">
           {models.map((model) => (
             <div key={model} className="flex h-14 items-center justify-center rounded-lg border bg-card px-3 text-center text-sm font-medium transition-colors hover:border-primary/45">
               {model}

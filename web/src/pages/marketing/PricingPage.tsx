@@ -16,7 +16,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 
 type Plan = {
@@ -47,7 +46,7 @@ const plans: Plan[] = [
     unit: "× 倍率起",
     badge: "推荐",
     highlight: true,
-    features: ["全模型开放", "多 key 轮询与失败重试", "调用日志保留 30 天", "邀请返利 5%"],
+    features: ["核心模型开放", "多 key 轮询与失败重试", "调用日志保留 30 天", "邀请返利 5%"],
     cta: "开始接入",
   },
   {
@@ -67,7 +66,7 @@ type Model = {
   context: string;
   input: number;
   output: number;
-  group: "chat" | "image" | "embed" | "audio";
+  group: "chat";
 };
 
 const models: Model[] = [
@@ -75,46 +74,32 @@ const models: Model[] = [
   { id: "claude-opus-4-7", vendor: "Anthropic", context: "200K", input: 15.0, output: 75.0, group: "chat" },
   { id: "claude-haiku-4-5", vendor: "Anthropic", context: "200K", input: 0.8, output: 4.0, group: "chat" },
   { id: "gpt-5", vendor: "OpenAI", context: "256K", input: 5.0, output: 20.0, group: "chat" },
+  { id: "gpt-5-mini", vendor: "OpenAI", context: "256K", input: 0.25, output: 2.0, group: "chat" },
   { id: "gpt-4o", vendor: "OpenAI", context: "128K", input: 2.5, output: 10.0, group: "chat" },
-  { id: "o1-pro", vendor: "OpenAI", context: "200K", input: 15.0, output: 60.0, group: "chat" },
+  { id: "gpt-4o-mini", vendor: "OpenAI", context: "128K", input: 0.15, output: 0.6, group: "chat" },
   { id: "gemini-2.5-pro", vendor: "Google", context: "1M", input: 1.25, output: 10.0, group: "chat" },
   { id: "gemini-2.5-flash", vendor: "Google", context: "1M", input: 0.075, output: 0.3, group: "chat" },
-  { id: "deepseek-v3", vendor: "DeepSeek", context: "128K", input: 0.27, output: 1.1, group: "chat" },
-  { id: "deepseek-r1", vendor: "DeepSeek", context: "64K", input: 0.55, output: 2.19, group: "chat" },
-  { id: "qwen3-max", vendor: "Alibaba", context: "128K", input: 0.8, output: 3.0, group: "chat" },
-  { id: "kimi-k2", vendor: "Moonshot", context: "200K", input: 0.6, output: 2.5, group: "chat" },
-  { id: "glm-4.6", vendor: "Zhipu", context: "128K", input: 0.5, output: 2.0, group: "chat" },
-  { id: "dall-e-3", vendor: "OpenAI", context: "—", input: 0, output: 40, group: "image" },
-  { id: "sora-2", vendor: "OpenAI", context: "—", input: 0, output: 200, group: "image" },
-  { id: "text-embedding-3-large", vendor: "OpenAI", context: "8K", input: 0.13, output: 0, group: "embed" },
-  { id: "bge-large-zh", vendor: "BAAI", context: "8K", input: 0.07, output: 0, group: "embed" },
-  { id: "whisper-1", vendor: "OpenAI", context: "—", input: 6.0, output: 0, group: "audio" },
+  { id: "gemini-2.0-flash", vendor: "Google", context: "1M", input: 0.1, output: 0.4, group: "chat" },
 ];
 
 const billingMetrics = [
   { label: "余额有效期", value: "永久", hint: "充值后不清零", icon: Wallet, tone: "success" },
   { label: "最低倍率", value: "0.2x", hint: "按模型独立计费", icon: CircleDollarSign, tone: "default" },
-  { label: "模型覆盖", value: "80+", hint: "对话 / 图像 / 语音", icon: Layers3, tone: "default" },
+  { label: "模型覆盖", value: "12+", hint: "Claude / GPT / Gemini", icon: Layers3, tone: "default" },
   { label: "日志保留", value: "30天", hint: "标准版起", icon: Clock3, tone: "warning" },
 ] satisfies PricingMetricProps[];
 
 const groupLabel: Record<Model["group"], string> = {
   chat: "对话",
-  image: "图像 / 视频",
-  embed: "嵌入",
-  audio: "音频",
 };
 
 const groupHint: Record<Model["group"], string> = {
   chat: "按 prompt + completion token 计费",
-  image: "按生成任务和输出规格计费",
-  embed: "按输入 token 计费",
-  audio: "按音频时长或任务计费",
 };
 
 export default function PricingPage() {
   const [query, setQuery] = useState("");
-  const [group, setGroup] = useState<Model["group"]>("chat");
+  const group: Model["group"] = "chat";
 
   const filtered = useMemo(
     () =>
@@ -197,16 +182,7 @@ export default function PricingPage() {
                   <CardDescription className="mt-1">{groupHint[group]}</CardDescription>
                 </div>
                 <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
-                  <Tabs value={group} onValueChange={(value) => setGroup(value as Model["group"])}>
-                    <div className="overflow-x-auto pb-1">
-                      <TabsList>
-                        <TabsTrigger value="chat">对话</TabsTrigger>
-                        <TabsTrigger value="image">图像 / 视频</TabsTrigger>
-                        <TabsTrigger value="embed">嵌入</TabsTrigger>
-                        <TabsTrigger value="audio">音频</TabsTrigger>
-                      </TabsList>
-                    </div>
-                  </Tabs>
+                  <Badge variant="secondary">Claude / GPT / Gemini</Badge>
                   <div className="relative w-full lg:w-72">
                     <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
                     <Input

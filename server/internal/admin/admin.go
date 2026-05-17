@@ -47,8 +47,23 @@ func (h *Handler) Register(rg *gin.RouterGroup) {
 
 	rg.GET("/upstreams", h.listUpstreams)
 	rg.POST("/upstreams", h.createUpstream)
+	rg.POST("/upstreams/bulk-status", h.bulkUpdateUpstreams)
+	rg.POST("/upstreams/:id/check", h.checkUpstream)
+	rg.POST("/upstreams/:id/sync-models", h.syncUpstreamModels)
 	rg.PUT("/upstreams/:id", h.updateUpstream)
 	rg.DELETE("/upstreams/:id", h.deleteUpstream)
+	rg.GET("/upstream-accounts", h.listUpstreamAccounts)
+	rg.POST("/upstream-accounts", h.createUpstreamAccount)
+	rg.PUT("/upstream-accounts/:id", h.updateUpstreamAccount)
+	rg.DELETE("/upstream-accounts/:id", h.deleteUpstreamAccount)
+	rg.POST("/upstream-accounts/:id/check", h.checkUpstreamAccount)
+	rg.POST("/upstream-accounts/:id/recover", h.recoverUpstreamAccount)
+	rg.POST("/upstream-accounts/:id/oauth/start", h.startUpstreamAccountOAuth)
+	rg.POST("/upstream-accounts/:id/refresh-oauth", h.refreshUpstreamAccountOAuth)
+
+	rg.GET("/ops/snapshot", h.opsSnapshot)
+	rg.GET("/ops/accounts", h.opsAccounts)
+	rg.GET("/ops/errors", h.opsErrors)
 
 	rg.GET("/models", h.listModels)
 	rg.POST("/models", h.createModel)
@@ -101,11 +116,16 @@ func (h *Handler) listUsers(c *gin.Context) {
 }
 
 type adminUserCreateReq struct {
-	Email    string `json:"email" binding:"required,email"`
-	Password string `json:"password" binding:"required,min=6,max=64"`
-	Username string `json:"username"`
-	Role     string `json:"role"`
-	GroupID  uint64 `json:"groupId"`
+	Email            string `json:"email" binding:"required,email"`
+	Password         string `json:"password" binding:"required,min=6,max=64"`
+	Username         string `json:"username"`
+	Role             string `json:"role"`
+	GroupID          uint64 `json:"groupId"`
+	ConcurrencyLimit int    `json:"concurrencyLimit"`
+	QPSLimit         int    `json:"qpsLimit"`
+	TPSLimit         int    `json:"tpsLimit"`
+	RPMLimit         int    `json:"rpmLimit"`
+	TPMLimit         int    `json:"tpmLimit"`
 }
 
 func (h *Handler) createUser(c *gin.Context) {
@@ -130,13 +150,18 @@ func (h *Handler) createUser(c *gin.Context) {
 		username = strings.SplitN(req.Email, "@", 2)[0]
 	}
 	u := store.User{
-		Email:        strings.ToLower(strings.TrimSpace(req.Email)),
-		PasswordHash: string(hash),
-		Username:     username,
-		Role:         req.Role,
-		Status:       "active",
-		GroupID:      req.GroupID,
-		InviteCode:   idgen.RandomAlpha(8),
+		Email:            strings.ToLower(strings.TrimSpace(req.Email)),
+		PasswordHash:     string(hash),
+		Username:         username,
+		Role:             req.Role,
+		Status:           "active",
+		GroupID:          req.GroupID,
+		ConcurrencyLimit: nonNegative(req.ConcurrencyLimit),
+		QPSLimit:         nonNegative(req.QPSLimit),
+		TPSLimit:         nonNegative(req.TPSLimit),
+		RPMLimit:         nonNegative(req.RPMLimit),
+		TPMLimit:         nonNegative(req.TPMLimit),
+		InviteCode:       idgen.RandomAlpha(8),
 	}
 	if err := h.s.DB.Create(&u).Error; err != nil {
 		response.Fail(c, errkit.Conflict("邮箱已存在"))
@@ -151,12 +176,17 @@ func (h *Handler) createUser(c *gin.Context) {
 }
 
 type adminUserUpdateReq struct {
-	Username *string `json:"username"`
-	Role     *string `json:"role"`
-	Status   *string `json:"status"`
-	GroupID  *uint64 `json:"groupId"`
-	Quota    *string `json:"quota"`
-	Password *string `json:"password"`
+	Username         *string `json:"username"`
+	Role             *string `json:"role"`
+	Status           *string `json:"status"`
+	GroupID          *uint64 `json:"groupId"`
+	Quota            *string `json:"quota"`
+	Password         *string `json:"password"`
+	ConcurrencyLimit *int    `json:"concurrencyLimit"`
+	QPSLimit         *int    `json:"qpsLimit"`
+	TPSLimit         *int    `json:"tpsLimit"`
+	RPMLimit         *int    `json:"rpmLimit"`
+	TPMLimit         *int    `json:"tpmLimit"`
 }
 
 func (h *Handler) updateUser(c *gin.Context) {
@@ -183,6 +213,21 @@ func (h *Handler) updateUser(c *gin.Context) {
 	}
 	if req.GroupID != nil {
 		updates["group_id"] = *req.GroupID
+	}
+	if req.ConcurrencyLimit != nil {
+		updates["concurrency_limit"] = nonNegative(*req.ConcurrencyLimit)
+	}
+	if req.QPSLimit != nil {
+		updates["qps_limit"] = nonNegative(*req.QPSLimit)
+	}
+	if req.TPSLimit != nil {
+		updates["tps_limit"] = nonNegative(*req.TPSLimit)
+	}
+	if req.RPMLimit != nil {
+		updates["rpm_limit"] = nonNegative(*req.RPMLimit)
+	}
+	if req.TPMLimit != nil {
+		updates["tpm_limit"] = nonNegative(*req.TPMLimit)
 	}
 	if req.Quota != nil {
 		q, err := decimal.NewFromString(*req.Quota)
@@ -243,14 +288,17 @@ func (h *Handler) listUpstreams(c *gin.Context) {
 }
 
 type upstreamReq struct {
-	Name     string `json:"name" binding:"required,max=64"`
-	Type     string `json:"type"`
-	BaseURL  string `json:"baseUrl" binding:"required,url"`
-	APIKey   string `json:"apiKey"`
-	Status   string `json:"status"`
-	Priority int    `json:"priority"`
-	Weight   int    `json:"weight"`
-	Note     string `json:"note"`
+	Name             string `json:"name" binding:"required,max=64"`
+	Type             string `json:"type"`
+	BaseURL          string `json:"baseUrl" binding:"required,url"`
+	APIKey           string `json:"apiKey"`
+	Status           string `json:"status"`
+	Tags             string `json:"tags"`
+	Priority         int    `json:"priority"`
+	Weight           int    `json:"weight"`
+	AutoDisable      *bool  `json:"autoDisable"`
+	FailureThreshold int    `json:"failureThreshold"`
+	Note             string `json:"note"`
 }
 
 func (h *Handler) createUpstream(c *gin.Context) {
@@ -260,14 +308,17 @@ func (h *Handler) createUpstream(c *gin.Context) {
 		return
 	}
 	u := store.Upstream{
-		Name:     req.Name,
-		Type:     orDefault(req.Type, "openai"),
-		BaseURL:  req.BaseURL,
-		APIKey:   req.APIKey,
-		Status:   orDefault(req.Status, "online"),
-		Priority: defaultInt(req.Priority, 10),
-		Weight:   defaultInt(req.Weight, 10),
-		Note:     req.Note,
+		Name:             req.Name,
+		Type:             orDefault(req.Type, "openai"),
+		BaseURL:          req.BaseURL,
+		APIKey:           req.APIKey,
+		Status:           orDefault(req.Status, "online"),
+		Tags:             req.Tags,
+		Priority:         defaultInt(req.Priority, 10),
+		Weight:           defaultInt(req.Weight, 10),
+		AutoDisable:      boolDefault(req.AutoDisable, true),
+		FailureThreshold: defaultInt(req.FailureThreshold, 3),
+		Note:             req.Note,
 	}
 	if err := h.s.DB.Create(&u).Error; err != nil {
 		response.Fail(c, errkit.ErrInternal)
@@ -294,13 +345,16 @@ func (h *Handler) updateUpstream(c *gin.Context) {
 		return
 	}
 	updates := map[string]any{
-		"name":     req.Name,
-		"type":     orDefault(req.Type, u.Type),
-		"base_url": req.BaseURL,
-		"status":   orDefault(req.Status, u.Status),
-		"priority": defaultInt(req.Priority, u.Priority),
-		"weight":   defaultInt(req.Weight, u.Weight),
-		"note":     req.Note,
+		"name":              req.Name,
+		"type":              orDefault(req.Type, u.Type),
+		"base_url":          req.BaseURL,
+		"status":            orDefault(req.Status, u.Status),
+		"tags":              req.Tags,
+		"priority":          defaultInt(req.Priority, u.Priority),
+		"weight":            defaultInt(req.Weight, u.Weight),
+		"auto_disable":      boolDefault(req.AutoDisable, u.AutoDisable),
+		"failure_threshold": defaultInt(req.FailureThreshold, u.FailureThreshold),
+		"note":              req.Note,
 	}
 	if req.APIKey != "" {
 		updates["api_key"] = req.APIKey
@@ -847,6 +901,10 @@ func (h *Handler) getSettings(c *gin.Context) {
 	}
 	out := map[string]any{}
 	for _, r := range rows {
+		if isSensitiveSettingKey(r.Key) {
+			out[r.Key] = ""
+			continue
+		}
 		var v any
 		if err := json.Unmarshal([]byte(r.Value), &v); err == nil {
 			out[r.Key] = v
@@ -881,6 +939,16 @@ func (h *Handler) updateSettings(c *gin.Context) {
 	response.OK(c, gin.H{"ok": true})
 }
 
+func isSensitiveSettingKey(key string) bool {
+	key = strings.ToLower(strings.TrimSpace(key))
+	for _, marker := range []string{"password", "secret", "privatekey", "private_key", "access_token", "refresh_token"} {
+		if strings.Contains(key, marker) {
+			return true
+		}
+	}
+	return false
+}
+
 // ---------- helpers ----------
 
 func orDefault(v, def string) string {
@@ -895,6 +963,13 @@ func defaultInt(v, def int) int {
 		return def
 	}
 	return v
+}
+
+func boolDefault(v *bool, def bool) bool {
+	if v == nil {
+		return def
+	}
+	return *v
 }
 
 func parseRatio(s, def string) (decimal.Decimal, error) {

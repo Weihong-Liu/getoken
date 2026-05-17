@@ -20,6 +20,7 @@ import SettingsPage from "@/pages/dashboard/SettingsPage";
 import AdminOverviewPage from "@/pages/admin/AdminOverviewPage";
 import UsersPage from "@/pages/admin/UsersPage";
 import ChannelsPage from "@/pages/admin/ChannelsPage";
+import OpsPage from "@/pages/admin/OpsPage";
 import ModelsPage from "@/pages/admin/ModelsPage";
 import GroupsPage from "@/pages/admin/GroupsPage";
 import AdminLogsPage from "@/pages/admin/AdminLogsPage";
@@ -30,12 +31,12 @@ import SystemSettingsPage from "@/pages/admin/SystemSettingsPage";
 import NotFoundPage from "@/pages/NotFoundPage";
 
 export const router = createBrowserRouter([
+  { path: "/status", element: <StatusPage /> },
   {
     element: <MarketingLayout />,
     children: [
       { path: "/", element: <HomePage /> },
       { path: "/pricing", element: <PricingPage /> },
-      { path: "/status", element: <StatusPage /> },
       { path: "/tutorial", element: <TutorialPage /> },
     ],
   },
@@ -75,6 +76,7 @@ export const router = createBrowserRouter([
       { index: true, element: <AdminOverviewPage /> },
       { path: "users", element: <UsersPage /> },
       { path: "channels", element: <ChannelsPage /> },
+      { path: "ops", element: <OpsPage /> },
       { path: "models", element: <ModelsPage /> },
       { path: "groups", element: <GroupsPage /> },
       { path: "logs", element: <AdminLogsPage /> },

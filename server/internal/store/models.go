@@ -16,73 +16,115 @@ type Group struct {
 }
 
 type User struct {
-	ID           uint64          `gorm:"primaryKey" json:"id"`
-	Email        string          `gorm:"uniqueIndex;size:128" json:"email"`
-	PasswordHash string          `gorm:"size:128;not null" json:"-"`
-	Username     string          `gorm:"size:64" json:"username"`
-	Role         string          `gorm:"size:16;not null;default:user" json:"role"`     // user / admin
-	Status       string          `gorm:"size:16;not null;default:active" json:"status"` // active / banned
-	GroupID      uint64          `gorm:"index;not null;default:1" json:"groupId"`
-	Quota        decimal.Decimal `gorm:"type:numeric(18,6);not null;default:0" json:"quota"`
-	UsedQuota    decimal.Decimal `gorm:"type:numeric(18,6);not null;default:0" json:"usedQuota"`
-	InviteCode   string          `gorm:"uniqueIndex;size:32" json:"inviteCode"`
-	InvitedBy    *uint64         `gorm:"index" json:"invitedBy,omitempty"`
-	GithubID     *int64          `gorm:"column:github_id;uniqueIndex" json:"-"`
-	CreatedAt    time.Time       `json:"createdAt"`
-	UpdatedAt    time.Time       `json:"updatedAt"`
+	ID               uint64          `gorm:"primaryKey" json:"id"`
+	Email            string          `gorm:"uniqueIndex;size:128" json:"email"`
+	PasswordHash     string          `gorm:"size:128;not null" json:"-"`
+	Username         string          `gorm:"size:64" json:"username"`
+	Role             string          `gorm:"size:16;not null;default:user" json:"role"`     // user / admin
+	Status           string          `gorm:"size:16;not null;default:active" json:"status"` // active / banned
+	GroupID          uint64          `gorm:"index;not null;default:1" json:"groupId"`
+	Quota            decimal.Decimal `gorm:"type:numeric(18,6);not null;default:0" json:"quota"`
+	UsedQuota        decimal.Decimal `gorm:"type:numeric(18,6);not null;default:0" json:"usedQuota"`
+	ConcurrencyLimit int             `gorm:"not null;default:0" json:"concurrencyLimit"`
+	QPSLimit         int             `gorm:"column:qps_limit;not null;default:0" json:"qpsLimit"`
+	TPSLimit         int             `gorm:"column:tps_limit;not null;default:0" json:"tpsLimit"`
+	RPMLimit         int             `gorm:"column:rpm_limit;not null;default:0" json:"rpmLimit"`
+	TPMLimit         int             `gorm:"column:tpm_limit;not null;default:0" json:"tpmLimit"`
+	InviteCode       string          `gorm:"uniqueIndex;size:32" json:"inviteCode"`
+	InvitedBy        *uint64         `gorm:"index" json:"invitedBy,omitempty"`
+	GithubID         *int64          `gorm:"column:github_id;uniqueIndex" json:"-"`
+	CreatedAt        time.Time       `json:"createdAt"`
+	UpdatedAt        time.Time       `json:"updatedAt"`
 }
 
 type Token struct {
-	ID             uint64          `gorm:"primaryKey" json:"id"`
-	UserID         uint64          `gorm:"index;not null" json:"userId"`
-	Name           string          `gorm:"size:64;not null" json:"name"`
-	KeyHash        string          `gorm:"uniqueIndex;size:128;not null" json:"-"`
-	KeyPrefix      string          `gorm:"size:32;not null" json:"keyPrefix"`
-	Status         int             `gorm:"not null;default:1" json:"status"` // 1 active / 0 disabled
-	RemainQuota    decimal.Decimal `gorm:"type:numeric(18,6);not null;default:0" json:"remainQuota"`
-	UnlimitedQuota bool            `gorm:"not null;default:false" json:"unlimitedQuota"`
-	ExpiredAt      *time.Time      `json:"expiredAt,omitempty"`
-	GroupID        uint64          `gorm:"index;not null;default:1" json:"groupId"`
-	IPWhitelist    string          `gorm:"type:text" json:"ipWhitelist"`
-	CreatedAt      time.Time       `json:"createdAt"`
-	UpdatedAt      time.Time       `json:"updatedAt"`
+	ID               uint64          `gorm:"primaryKey" json:"id"`
+	UserID           uint64          `gorm:"index;not null" json:"userId"`
+	Name             string          `gorm:"size:64;not null" json:"name"`
+	KeyHash          string          `gorm:"uniqueIndex;size:128;not null" json:"-"`
+	KeyPrefix        string          `gorm:"size:32;not null" json:"keyPrefix"`
+	Status           int             `gorm:"not null;default:1" json:"status"` // 1 active / 0 disabled
+	RemainQuota      decimal.Decimal `gorm:"type:numeric(18,6);not null;default:0" json:"remainQuota"`
+	UnlimitedQuota   bool            `gorm:"not null;default:false" json:"unlimitedQuota"`
+	ExpiredAt        *time.Time      `json:"expiredAt,omitempty"`
+	GroupID          uint64          `gorm:"index;not null;default:1" json:"groupId"`
+	IPWhitelist      string          `gorm:"type:text" json:"ipWhitelist"`
+	AllowedModels    string          `gorm:"column:allowed_models;type:text;not null;default:''" json:"allowedModels"` // CSV/glob list; empty = all group-visible models
+	ConcurrencyLimit int             `gorm:"not null;default:0" json:"concurrencyLimit"`
+	QPSLimit         int             `gorm:"column:qps_limit;not null;default:0" json:"qpsLimit"`
+	TPSLimit         int             `gorm:"column:tps_limit;not null;default:0" json:"tpsLimit"`
+	RPMLimit         int             `gorm:"column:rpm_limit;not null;default:0" json:"rpmLimit"`
+	TPMLimit         int             `gorm:"column:tpm_limit;not null;default:0" json:"tpmLimit"`
+	CreatedAt        time.Time       `json:"createdAt"`
+	UpdatedAt        time.Time       `json:"updatedAt"`
 }
 
 type Log struct {
-	ID               uint64          `gorm:"primaryKey" json:"id"`
-	UserID           uint64          `gorm:"index;not null" json:"userId"`
-	TokenID          *uint64         `gorm:"index" json:"tokenId,omitempty"`
-	TokenName        string          `gorm:"size:64" json:"tokenName"`
-	Type             string          `gorm:"size:16;index;not null;default:request" json:"type"` // request/topup/system
-	ModelName        string          `gorm:"size:64;index" json:"modelName"`
-	PromptTokens         int             `gorm:"not null;default:0" json:"promptTokens"`
-	CompletionTokens     int             `gorm:"not null;default:0" json:"completionTokens"`
-	CachedTokens         int             `gorm:"column:cached_tokens;not null;default:0" json:"cachedTokens"`
-	CacheCreationTokens  int             `gorm:"column:cache_creation_tokens;not null;default:0" json:"cacheCreationTokens"`
-	ReasoningEffort      string          `gorm:"column:reasoning_effort;size:16;not null;default:''" json:"reasoningEffort"`
-	ReasoningTokens      int             `gorm:"column:reasoning_tokens;not null;default:0" json:"reasoningTokens"`
-	Quota            decimal.Decimal `gorm:"type:numeric(18,6);not null;default:0" json:"quota"`
-	Status           string          `gorm:"size:16;not null;default:success" json:"status"`
-	LatencyMs        int             `gorm:"not null;default:0" json:"latencyMs"`
-	Error            string          `gorm:"type:text" json:"error,omitempty"`
-	CreatedAt        time.Time       `gorm:"index" json:"createdAt"`
+	ID                  uint64          `gorm:"primaryKey" json:"id"`
+	UserID              uint64          `gorm:"index;not null" json:"userId"`
+	TokenID             *uint64         `gorm:"index" json:"tokenId,omitempty"`
+	TokenName           string          `gorm:"size:64" json:"tokenName"`
+	Type                string          `gorm:"size:16;index;not null;default:request" json:"type"` // request/topup/system
+	ModelName           string          `gorm:"size:64;index" json:"modelName"`
+	PromptTokens        int             `gorm:"not null;default:0" json:"promptTokens"`
+	CompletionTokens    int             `gorm:"not null;default:0" json:"completionTokens"`
+	CachedTokens        int             `gorm:"column:cached_tokens;not null;default:0" json:"cachedTokens"`
+	CacheCreationTokens int             `gorm:"column:cache_creation_tokens;not null;default:0" json:"cacheCreationTokens"`
+	ReasoningEffort     string          `gorm:"column:reasoning_effort;size:16;not null;default:''" json:"reasoningEffort"`
+	ReasoningTokens     int             `gorm:"column:reasoning_tokens;not null;default:0" json:"reasoningTokens"`
+	Quota               decimal.Decimal `gorm:"type:numeric(18,6);not null;default:0" json:"quota"`
+	Status              string          `gorm:"size:16;not null;default:success" json:"status"`
+	LatencyMs           int             `gorm:"not null;default:0" json:"latencyMs"`
+	Error               string          `gorm:"type:text" json:"error,omitempty"`
+	CreatedAt           time.Time       `gorm:"index" json:"createdAt"`
 }
 
 // Upstream represents an external aggregator (new-api / sub2api / one-api) we forward to.
 type Upstream struct {
-	ID          uint64    `gorm:"primaryKey" json:"id"`
-	Name        string    `gorm:"size:64;not null" json:"name"`
-	Type        string    `gorm:"size:32;not null;default:openai" json:"type"` // openai-compatible / anthropic / gemini ...
-	BaseURL     string    `gorm:"size:255;not null" json:"baseUrl"`
-	APIKey      string    `gorm:"size:255;not null" json:"-"`
-	Status      string    `gorm:"size:16;not null;default:online" json:"status"` // online/degraded/offline
-	Priority    int       `gorm:"not null;default:10" json:"priority"`
-	Weight      int       `gorm:"not null;default:10" json:"weight"`
-	LatencyMs   int       `gorm:"not null;default:0" json:"latencyMs"`
-	LastCheckAt *time.Time `json:"lastCheckAt,omitempty"`
-	Note        string    `gorm:"type:text" json:"note,omitempty"`
-	CreatedAt   time.Time `json:"createdAt"`
-	UpdatedAt   time.Time `json:"updatedAt"`
+	ID               uint64     `gorm:"primaryKey" json:"id"`
+	Name             string     `gorm:"size:64;not null" json:"name"`
+	Type             string     `gorm:"size:32;not null;default:openai" json:"type"` // openai-compatible / anthropic / gemini ...
+	BaseURL          string     `gorm:"size:255;not null" json:"baseUrl"`
+	APIKey           string     `gorm:"size:255;not null" json:"-"`
+	Status           string     `gorm:"size:16;not null;default:online" json:"status"` // online/degraded/offline
+	Tags             string     `gorm:"type:text;not null;default:''" json:"tags"`
+	Priority         int        `gorm:"not null;default:10" json:"priority"`
+	Weight           int        `gorm:"not null;default:10" json:"weight"`
+	AutoDisable      bool       `gorm:"column:auto_disable;not null;default:true" json:"autoDisable"`
+	FailureCount     int        `gorm:"column:failure_count;not null;default:0" json:"failureCount"`
+	FailureThreshold int        `gorm:"column:failure_threshold;not null;default:3" json:"failureThreshold"`
+	LatencyMs        int        `gorm:"not null;default:0" json:"latencyMs"`
+	LastCheckAt      *time.Time `json:"lastCheckAt,omitempty"`
+	LastError        string     `gorm:"type:text;not null;default:''" json:"lastError,omitempty"`
+	Note             string     `gorm:"type:text" json:"note,omitempty"`
+	CreatedAt        time.Time  `json:"createdAt"`
+	UpdatedAt        time.Time  `json:"updatedAt"`
+}
+
+// UpstreamAccount represents one credential inside an upstream account/key pool.
+type UpstreamAccount struct {
+	ID                uint64     `gorm:"primaryKey" json:"id"`
+	UpstreamID        uint64     `gorm:"index;not null" json:"upstreamId"`
+	Name              string     `gorm:"size:64;not null" json:"name"`
+	AccountType       string     `gorm:"size:32;not null;default:apikey" json:"accountType"` // apikey/oauth/oauth_code/setup-token/upstream/service_account
+	APIKey            string     `gorm:"size:512;not null" json:"-"`
+	OAuthAccessToken  string     `gorm:"column:oauth_access_token;type:text;not null;default:''" json:"-"`
+	OAuthRefreshToken string     `gorm:"column:oauth_refresh_token;type:text;not null;default:''" json:"-"`
+	OAuthExpiresAt    *time.Time `gorm:"column:oauth_expires_at" json:"oauthExpiresAt,omitempty"`
+	ProxyURL          string     `gorm:"column:proxy_url;size:255;not null;default:''" json:"proxyUrl,omitempty"`
+	Status            string     `gorm:"size:16;not null;default:online" json:"status"` // online/degraded/offline/cooling
+	Priority          int        `gorm:"not null;default:10" json:"priority"`
+	Weight            int        `gorm:"not null;default:10" json:"weight"`
+	RPMLimit          int        `gorm:"column:rpm_limit;not null;default:0" json:"rpmLimit"`
+	TPMLimit          int        `gorm:"column:tpm_limit;not null;default:0" json:"tpmLimit"`
+	ConcurrencyLimit  int        `gorm:"not null;default:0" json:"concurrencyLimit"`
+	LatencyMs         int        `gorm:"not null;default:0" json:"latencyMs"`
+	LastUsedAt        *time.Time `json:"lastUsedAt,omitempty"`
+	LastCheckAt       *time.Time `json:"lastCheckAt,omitempty"`
+	LastError         string     `gorm:"type:text;not null;default:''" json:"lastError,omitempty"`
+	Note              string     `gorm:"type:text;not null;default:''" json:"note,omitempty"`
+	CreatedAt         time.Time  `json:"createdAt"`
+	UpdatedAt         time.Time  `json:"updatedAt"`
 }
 
 // ModelMapping declares a model exposed on this platform and which upstream serves it.
@@ -114,12 +156,31 @@ type RedemptionCode struct {
 	CreatedAt time.Time       `json:"createdAt"`
 }
 
+type PaymentOrder struct {
+	ID          uint64          `gorm:"primaryKey" json:"id"`
+	OrderNo     string          `gorm:"uniqueIndex;size:48;not null" json:"orderNo"`
+	UserID      uint64          `gorm:"index;not null" json:"userId"`
+	Provider    string          `gorm:"size:32;not null;default:'manual'" json:"provider"`
+	Channel     string          `gorm:"size:32;not null" json:"channel"`
+	Amount      decimal.Decimal `gorm:"type:numeric(18,6);not null" json:"amount"`
+	Currency    string          `gorm:"size:8;not null;default:'USD'" json:"currency"`
+	Status      string          `gorm:"size:24;not null;default:'PENDING'" json:"status"`
+	PayURL      string          `gorm:"column:pay_url;type:text;not null;default:''" json:"payUrl"`
+	QRContent   string          `gorm:"column:qr_content;type:text;not null;default:''" json:"qrContent"`
+	ProviderRef string          `gorm:"column:provider_ref;size:128;not null;default:''" json:"providerRef"`
+	ExpiredAt   *time.Time      `json:"expiredAt,omitempty"`
+	PaidAt      *time.Time      `json:"paidAt,omitempty"`
+	CompletedAt *time.Time      `json:"completedAt,omitempty"`
+	CreatedAt   time.Time       `json:"createdAt"`
+	UpdatedAt   time.Time       `json:"updatedAt"`
+}
+
 type Announcement struct {
 	ID        uint64    `gorm:"primaryKey" json:"id"`
 	Title     string    `gorm:"size:255;not null" json:"title"`
 	Content   string    `gorm:"type:text" json:"content"`
-	Level     string    `gorm:"size:16;not null;default:info" json:"level"`    // info/warning/danger
-	Status    string    `gorm:"size:16;not null;default:draft" json:"status"`  // draft/published
+	Level     string    `gorm:"size:16;not null;default:info" json:"level"`   // info/warning/danger
+	Status    string    `gorm:"size:16;not null;default:draft" json:"status"` // draft/published
 	CreatedAt time.Time `json:"createdAt"`
 	UpdatedAt time.Time `json:"updatedAt"`
 }

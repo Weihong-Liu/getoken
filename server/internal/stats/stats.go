@@ -101,12 +101,12 @@ func (h *Handler) userStats(c *gin.Context) {
 }
 
 type adminStatsResp struct {
-	Users       int64           `json:"users"`
-	Tokens      int64           `json:"tokens"`
-	RequestsToday int64         `json:"requestsToday"`
-	RevenueToday decimal.Decimal `json:"revenueToday"`
-	Series      []seriesPoint   `json:"series"`
-	TopModels   []topModel      `json:"topModels"`
+	Users         int64           `json:"users"`
+	Tokens        int64           `json:"tokens"`
+	RequestsToday int64           `json:"requestsToday"`
+	RevenueToday  decimal.Decimal `json:"revenueToday"`
+	Series        []seriesPoint   `json:"series"`
+	TopModels     []topModel      `json:"topModels"`
 }
 
 func (h *Handler) adminStats(c *gin.Context) {
@@ -128,7 +128,7 @@ func (h *Handler) adminStats(c *gin.Context) {
 	var revenueToday decimal.Decimal
 	h.s.DB.Model(&store.AuditLog{}).
 		Select("COALESCE(SUM(amount),0)").
-		Where("action = ? AND created_at >= ?", "topup.redeem", todayStart).
+		Where("action IN ? AND created_at >= ?", []string{"topup.redeem", "topup.order.completed"}, todayStart).
 		Scan(&revenueToday)
 	resp.RevenueToday = revenueToday
 

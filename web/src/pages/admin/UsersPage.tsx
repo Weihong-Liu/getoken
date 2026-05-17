@@ -82,6 +82,11 @@ export default function UsersPage() {
           username: String(fd.get("username") || ""),
           role: String(fd.get("role") || "user"),
           groupId: Number(fd.get("groupId") || 1),
+          concurrencyLimit: Number(fd.get("concurrencyLimit") || 0),
+          qpsLimit: Number(fd.get("qpsLimit") || 0),
+          tpsLimit: Number(fd.get("tpsLimit") || 0),
+          rpmLimit: Number(fd.get("rpmLimit") || 0),
+          tpmLimit: Number(fd.get("tpmLimit") || 0),
         }),
       });
       toast.success("用户已创建");
@@ -105,6 +110,11 @@ export default function UsersPage() {
       status: String(fd.get("status") || editing.status),
       groupId: Number(fd.get("groupId") || editing.groupId),
       quota: String(fd.get("quota") ?? editing.quota),
+      concurrencyLimit: Number(fd.get("concurrencyLimit") || 0),
+      qpsLimit: Number(fd.get("qpsLimit") || 0),
+      tpsLimit: Number(fd.get("tpsLimit") || 0),
+      rpmLimit: Number(fd.get("rpmLimit") || 0),
+      tpmLimit: Number(fd.get("tpmLimit") || 0),
     };
     const password = String(fd.get("password") || "");
     if (password) body.password = password;
@@ -167,6 +177,28 @@ export default function UsersPage() {
                     <Input id="groupId" name="groupId" type="number" defaultValue={1} />
                   </div>
                 </div>
+                <div className="grid grid-cols-5 gap-3">
+                  <div className="space-y-2">
+                    <Label htmlFor="concurrencyLimit">并发</Label>
+                    <Input id="concurrencyLimit" name="concurrencyLimit" type="number" min={0} defaultValue={0} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="qpsLimit">QPS</Label>
+                    <Input id="qpsLimit" name="qpsLimit" type="number" min={0} defaultValue={0} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="tpsLimit">TPS</Label>
+                    <Input id="tpsLimit" name="tpsLimit" type="number" min={0} defaultValue={0} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="rpmLimit">RPM</Label>
+                    <Input id="rpmLimit" name="rpmLimit" type="number" min={0} defaultValue={0} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="tpmLimit">TPM</Label>
+                    <Input id="tpmLimit" name="tpmLimit" type="number" min={0} defaultValue={0} />
+                  </div>
+                </div>
                 <DialogFooter>
                   <Button type="button" variant="outline" onClick={() => setCreating(false)}>取消</Button>
                   <Button type="submit" disabled={submitting}>
@@ -214,6 +246,7 @@ export default function UsersPage() {
               <TableHead>用户名</TableHead>
               <TableHead>角色</TableHead>
               <TableHead>分组</TableHead>
+              <TableHead>限流 (QPS/TPS)</TableHead>
               <TableHead className="text-right">余额</TableHead>
               <TableHead className="text-right">已用</TableHead>
               <TableHead>状态</TableHead>
@@ -224,7 +257,7 @@ export default function UsersPage() {
           <TableBody>
             {users.length === 0 && (
               <TableRow>
-                <TableCell colSpan={10}>
+                <TableCell colSpan={11}>
                   <div className="py-10 text-center text-sm text-muted-foreground">
                     <Users2 className="mx-auto size-8 mb-2 opacity-50" />
                     没有符合条件的用户
@@ -246,6 +279,11 @@ export default function UsersPage() {
                 </TableCell>
                 <TableCell>
                   <Badge variant="outline">#{u.groupId}</Badge>
+                </TableCell>
+                <TableCell className="text-xs text-muted-foreground">
+                  {u.concurrencyLimit || u.qpsLimit || u.tpsLimit || u.rpmLimit || u.tpmLimit
+                    ? `${u.concurrencyLimit || "∞"} 并发 · ${u.qpsLimit || "∞"} QPS · ${u.tpsLimit || "∞"} TPS`
+                    : "不限"}
                 </TableCell>
                 <TableCell className="text-right tabular-nums">{formatCurrency(Number(u.quota))}</TableCell>
                 <TableCell className="text-right tabular-nums text-muted-foreground">{formatCurrency(Number(u.usedQuota))}</TableCell>
@@ -318,6 +356,28 @@ export default function UsersPage() {
                 <div className="space-y-2">
                   <Label htmlFor="e-quota">额度 ($)</Label>
                   <Input id="e-quota" name="quota" type="number" step="0.01" defaultValue={editing.quota} />
+                </div>
+              </div>
+              <div className="grid grid-cols-5 gap-3">
+                <div className="space-y-2">
+                  <Label htmlFor="e-concurrencyLimit">并发</Label>
+                  <Input id="e-concurrencyLimit" name="concurrencyLimit" type="number" min={0} defaultValue={editing.concurrencyLimit ?? 0} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="e-qpsLimit">QPS</Label>
+                  <Input id="e-qpsLimit" name="qpsLimit" type="number" min={0} defaultValue={editing.qpsLimit ?? 0} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="e-tpsLimit">TPS</Label>
+                  <Input id="e-tpsLimit" name="tpsLimit" type="number" min={0} defaultValue={editing.tpsLimit ?? 0} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="e-rpmLimit">RPM</Label>
+                  <Input id="e-rpmLimit" name="rpmLimit" type="number" min={0} defaultValue={editing.rpmLimit ?? 0} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="e-tpmLimit">TPM</Label>
+                  <Input id="e-tpmLimit" name="tpmLimit" type="number" min={0} defaultValue={editing.tpmLimit ?? 0} />
                 </div>
               </div>
               <div className="space-y-2">

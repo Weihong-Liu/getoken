@@ -79,13 +79,10 @@ export const demoAdminUsers: AdminUser[] = Array.from({ length: 14 }, (_, i) => 
 
 export const demoAdminChannels: AdminChannel[] = [
   { id: 1, name: "Anthropic 官方", type: "anthropic", status: "online", models: ["claude-sonnet-4-6", "claude-opus-4-7", "claude-haiku-4-5"], keys: 8, priority: 10, weight: 10, latencyMs: 320 },
-  { id: 2, name: "OpenAI 官方", type: "openai", status: "online", models: ["gpt-5", "gpt-4o", "o1-pro"], keys: 12, priority: 10, weight: 10, latencyMs: 280 },
+  { id: 2, name: "OpenAI 官方", type: "openai", status: "online", models: ["gpt-5", "gpt-5-mini", "gpt-4o"], keys: 12, priority: 10, weight: 10, latencyMs: 280 },
   { id: 3, name: "Azure OpenAI 香港", type: "azure", status: "online", models: ["gpt-4o", "gpt-5"], keys: 4, priority: 5, weight: 5, latencyMs: 240 },
   { id: 4, name: "Google Gemini", type: "gemini", status: "degraded", models: ["gemini-2.5-pro", "gemini-2.5-flash"], keys: 6, priority: 8, weight: 8, latencyMs: 820 },
-  { id: 5, name: "DeepSeek 官方", type: "deepseek", status: "online", models: ["deepseek-v3", "deepseek-r1"], keys: 3, priority: 7, weight: 7, latencyMs: 195 },
-  { id: 6, name: "Kimi (Moonshot)", type: "moonshot", status: "online", models: ["kimi-k2"], keys: 2, priority: 5, weight: 5, latencyMs: 220 },
-  { id: 7, name: "硅基流动", type: "siliconflow", status: "online", models: ["deepseek-v3", "qwen3-max"], keys: 5, priority: 3, weight: 3, latencyMs: 350 },
-  { id: 8, name: "测试备份渠道", type: "openai", status: "offline", models: ["gpt-4o"], keys: 1, priority: 1, weight: 1, latencyMs: 0 },
+  { id: 5, name: "测试备份渠道", type: "openai", status: "offline", models: ["gpt-4o"], keys: 1, priority: 1, weight: 1, latencyMs: 0 },
 ];
 
 export const demoAdminModels: AdminModel[] = [
@@ -94,7 +91,6 @@ export const demoAdminModels: AdminModel[] = [
   { id: "gpt-5", vendor: "OpenAI", channels: 2, inputRatio: 1.0, outputRatio: 1.0, status: "online", groups: ["default", "vip"] },
   { id: "gpt-4o", vendor: "OpenAI", channels: 3, inputRatio: 0.8, outputRatio: 0.8, status: "online", groups: ["default", "vip"] },
   { id: "gemini-2.5-pro", vendor: "Google", channels: 1, inputRatio: 1.0, outputRatio: 1.0, status: "online", groups: ["default", "vip"] },
-  { id: "deepseek-v3", vendor: "DeepSeek", channels: 2, inputRatio: 0.5, outputRatio: 0.5, status: "online", groups: ["default", "vip"] },
 ];
 
 export const demoAdminGroups: AdminGroup[] = [
@@ -117,7 +113,7 @@ export const demoOrders: Order[] = Array.from({ length: 12 }, (_, i) => ({
   id: `ORD${Date.now() - i * 1000000}`.slice(0, 12),
   user: `user${(i % 8) + 1}@example.com`,
   amount: [10, 30, 50, 100, 300, 500][i % 6],
-  channel: ["alipay", "wxpay", "usdt"][i % 3],
+  channel: "alipay",
   status: i < 9 ? "paid" : i < 11 ? "pending" : "cancelled",
   createdAt: new Date(Date.now() - i * 3600000).toISOString(),
 }));

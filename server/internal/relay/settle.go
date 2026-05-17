@@ -171,6 +171,38 @@ func (sc *SettleCtx) Finalize(c *gin.Context, s *store.Store, log *zap.Logger, u
 			sc.Release(s, log)
 		}
 	}
+	updateAccountHealth(s, sc.Route.UpstreamAccount, latency, success, statusCode, errMsg)
+}
+
+func updateAccountHealth(s *store.Store, account *store.UpstreamAccount, latency int, success bool, statusCode int, errMsg string) {
+	if account == nil || account.ID == 0 {
+		return
+	}
+	status := "online"
+	lastError := ""
+	if !success {
+		lastError = errMsg
+		status = account.Status
+		if status == "" {
+			status = "online"
+		}
+		switch {
+		case statusCode == http.StatusUnauthorized || statusCode == http.StatusForbidden:
+			status = "degraded"
+		case statusCode == http.StatusTooManyRequests:
+			status = "degraded"
+		case statusCode >= 500 || statusCode == http.StatusBadGateway:
+			status = "degraded"
+		}
+	}
+	_ = s.DB.Model(&store.UpstreamAccount{}).
+		Where("id = ?", account.ID).
+		Updates(map[string]any{
+			"status":        status,
+			"latency_ms":    latency,
+			"last_check_at": time.Now(),
+			"last_error":    truncate(lastError, 512),
+		}).Error
 }
 
 // estimateTokens 给预扣阶段算一个保守估计。
