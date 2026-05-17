@@ -1,4 +1,3 @@
-import { useEffect, useState } from "react";
 import { geoMercator, geoPath } from "d3-geo";
 import { ComposableMap, Geographies, Geography, Marker } from "react-simple-maps";
 import countries from "world-atlas/countries-110m.json";
@@ -57,44 +56,9 @@ function routeD(fromId: string, toId: string): string {
   );
 }
 
-const KPI_POOL = [
-  { label: "调用 / 秒", base: 4280, jitter: 460 },
-  { label: "节点延迟 ms", base: 86, jitter: 18 },
-  { label: "上游成功率", base: 99.92, jitter: 0.06, suffix: "%", digits: 2 },
-  { label: "活跃地区", base: 32, jitter: 2 },
-  { label: "今日缓存命中", base: 71.4, jitter: 3.8, suffix: "%", digits: 1 },
-];
-
-function formatKpi(value: number, digits = 0, suffix = ""): string {
-  return (
-    value.toLocaleString("en-US", {
-      minimumFractionDigits: digits,
-      maximumFractionDigits: digits,
-    }) + suffix
-  );
-}
-
-function useKpiTicker() {
-  const [values, setValues] = useState(() =>
-    KPI_POOL.map((k) => formatKpi(k.base, k.digits ?? 0, k.suffix ?? "")),
-  );
-  useEffect(() => {
-    const id = window.setInterval(() => {
-      setValues(
-        KPI_POOL.map((k) => {
-          const v = k.base + (Math.random() - 0.5) * k.jitter;
-          return formatKpi(v, k.digits ?? 0, k.suffix ?? "");
-        }),
-      );
-    }, 2200);
-    return () => window.clearInterval(id);
-  }, []);
-  return values;
-}
+const STATUS_CHIPS = ["后端鉴权", "真实接口", "状态探测", "TLS", "审计日志"];
 
 export function AuthDashboardMap() {
-  const kpi = useKpiTicker();
-
   return (
     <div className="absolute inset-0 overflow-hidden bg-background text-foreground">
       {/* grid + glow backdrop (theme-aware via tokens) */}
@@ -249,27 +213,26 @@ export function AuthDashboardMap() {
       </div>
 
       <div className="pointer-events-none absolute right-6 top-6 hidden gap-2 md:flex">
-        {kpi.slice(0, 3).map((value, i) => (
+        {STATUS_CHIPS.slice(0, 3).map((label) => (
           <div
-            key={KPI_POOL[i].label}
+            key={label}
             className="rounded-md border border-border bg-card/55 px-3 py-2 text-right backdrop-blur"
           >
             <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
-              {KPI_POOL[i].label}
+              Control
             </div>
-            <div className="font-mono text-base text-primary">{value}</div>
+            <div className="font-mono text-base text-primary">{label}</div>
           </div>
         ))}
       </div>
 
       <div className="pointer-events-none absolute bottom-6 left-6 right-6 hidden flex-wrap items-center gap-3 md:flex">
-        {kpi.slice(3).map((value, i) => (
+        {STATUS_CHIPS.slice(3).map((label) => (
           <div
-            key={KPI_POOL[i + 3].label}
+            key={label}
             className="rounded-md border border-border bg-card/55 px-3 py-2 text-[11px] text-muted-foreground backdrop-blur"
           >
-            <span className="mr-2">{KPI_POOL[i + 3].label}</span>
-            <span className="font-mono text-primary">{value}</span>
+            <span className="font-mono text-primary">{label}</span>
           </div>
         ))}
         <div className="ml-auto rounded-md border border-success/40 bg-card/55 px-3 py-2 font-mono text-[11px] text-success backdrop-blur">

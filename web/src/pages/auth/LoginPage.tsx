@@ -1,16 +1,13 @@
-import { useRef, useState } from "react";
+import { useState } from "react";
 import useSWR from "swr";
 import { Link, useNavigate } from "react-router-dom";
-import { Copy, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   apiFetch,
-  DEMO_LOGIN_EMAIL,
-  DEMO_LOGIN_PASSWORD,
-  defaultPublicSettings,
   fetcher,
   setToken,
   type PublicSettings,
@@ -20,13 +17,11 @@ export default function LoginPage() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [githubLoading, setGithubLoading] = useState(false);
-  const formRef = useRef<HTMLFormElement>(null);
   const { data: settings } = useSWR<PublicSettings>("/public/settings", fetcher, {
-    fallbackData: defaultPublicSettings,
     revalidateOnFocus: false,
   });
-  const registrationEnabled = settings?.registrationEnabled ?? true;
-  const githubOAuthEnabled = settings?.githubOAuthEnabled ?? false;
+  const registrationEnabled = settings?.registrationEnabled === true;
+  const githubOAuthEnabled = settings?.githubOAuthEnabled === true;
 
   async function startGithubOAuth() {
     setGithubLoading(true);
@@ -38,18 +33,6 @@ export default function LoginPage() {
       toast.error(msg);
       setGithubLoading(false);
     }
-  }
-
-  function fillDemoAccount() {
-    const form = formRef.current;
-    if (!form) return;
-
-    const emailInput = form.elements.namedItem("email") as HTMLInputElement | null;
-    const passwordInput = form.elements.namedItem("password") as HTMLInputElement | null;
-
-    if (emailInput) emailInput.value = DEMO_LOGIN_EMAIL;
-    if (passwordInput) passwordInput.value = DEMO_LOGIN_PASSWORD;
-    toast.success("已填入默认账号");
   }
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -87,30 +70,7 @@ export default function LoginPage() {
         )}
       </p>
 
-      <div className="mt-6 rounded-lg border bg-card/80 p-4">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <p className="text-sm font-medium">默认演示账号</p>
-            <p className="mt-1 text-xs text-muted-foreground">本地没有后端时,也可以直接用这组账号进入控制台。</p>
-          </div>
-          <Button type="button" variant="outline" size="sm" onClick={fillDemoAccount}>
-            <Copy className="size-4" />
-            填入
-          </Button>
-        </div>
-        <div className="mt-3 space-y-2 rounded-md bg-muted/35 p-3 text-sm">
-          <div className="flex items-center justify-between gap-4">
-            <span className="text-muted-foreground">邮箱</span>
-            <code className="text-xs">{DEMO_LOGIN_EMAIL}</code>
-          </div>
-          <div className="flex items-center justify-between gap-4">
-            <span className="text-muted-foreground">密码</span>
-            <code className="text-xs">{DEMO_LOGIN_PASSWORD}</code>
-          </div>
-        </div>
-      </div>
-
-      <form ref={formRef} onSubmit={onSubmit} className="mt-8 space-y-4">
+      <form onSubmit={onSubmit} className="mt-8 space-y-4">
         <div className="space-y-2">
           <Label htmlFor="email">邮箱</Label>
           <Input id="email" name="email" type="email" autoComplete="email" required placeholder="you@example.com" />

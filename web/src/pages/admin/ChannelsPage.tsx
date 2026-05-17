@@ -26,7 +26,6 @@ import {
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { PageHeader } from "@/components/dashboard/PageHeader";
 import { apiFetch, fetcher, type AdminUpstream, type AdminUpstreamAccount } from "@/lib/api";
-import { demoAdminUpstreamAccounts, demoAdminUpstreams } from "@/lib/mock";
 import { timeAgo } from "@/lib/utils";
 
 const statusMap = {
@@ -46,11 +45,9 @@ const UPSTREAM_TYPES = ["openai", "anthropic", "gemini", "oneapi", "newapi", "su
 
 export default function ChannelsPage() {
   const { data, mutate } = useSWR<AdminUpstream[]>("/admin/upstreams", fetcher, {
-    fallbackData: demoAdminUpstreams,
     revalidateOnFocus: false,
   });
   const { data: accountsData, mutate: mutateAccounts } = useSWR<AdminUpstreamAccount[]>("/admin/upstream-accounts", fetcher, {
-    fallbackData: demoAdminUpstreamAccounts,
     revalidateOnFocus: false,
   });
   const [creating, setCreating] = useState(false);

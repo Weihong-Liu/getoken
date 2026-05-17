@@ -22,10 +22,10 @@ import {
 } from "@/components/ui/table";
 import { PageHeader } from "@/components/dashboard/PageHeader";
 import { fetcher, type LogEntry, type Page } from "@/lib/api";
-import { demoLogs } from "@/lib/mock";
 import { formatCurrency, formatNumber } from "@/lib/utils";
 
 const PAGE_SIZE = 20;
+const EMPTY_LOGS: LogEntry[] = [];
 
 export default function AdminLogsPage() {
   const [query, setQuery] = useState("");
@@ -41,11 +41,10 @@ export default function AdminLogsPage() {
   if (query) params.set("q", query);
 
   const { data } = useSWR<Page<LogEntry>>(`/admin/logs?${params}`, fetcher, {
-    fallbackData: { items: demoLogs, total: demoLogs.length, page, pageSize: PAGE_SIZE },
     revalidateOnFocus: false,
   });
 
-  const items = data?.items ?? [];
+  const items = data?.items ?? EMPTY_LOGS;
   const total = data?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const models = useMemo(

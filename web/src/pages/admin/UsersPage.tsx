@@ -26,7 +26,6 @@ import {
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { PageHeader } from "@/components/dashboard/PageHeader";
 import { apiFetch, fetcher, type AdminUser, type Page } from "@/lib/api";
-import { demoAdminUsers } from "@/lib/mock";
 import { formatCurrency, timeAgo } from "@/lib/utils";
 
 const PAGE_SIZE = 20;
@@ -48,7 +47,6 @@ export default function UsersPage() {
   params.set("pageSize", String(PAGE_SIZE));
 
   const { data, mutate } = useSWR<Page<AdminUser>>(`/admin/users?${params}`, fetcher, {
-    fallbackData: { items: demoAdminUsers, total: demoAdminUsers.length, page, pageSize: PAGE_SIZE },
     revalidateOnFocus: false,
   });
 

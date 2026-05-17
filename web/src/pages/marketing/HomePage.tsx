@@ -1,3 +1,4 @@
+import useSWR from "swr";
 import { Link } from "react-router-dom";
 import {
   Activity,
@@ -20,19 +21,13 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { fetcher, type ModelInfo, type StatusInfo } from "@/lib/api";
 
 type Capability = {
   icon: LucideIcon;
   title: string;
   desc: string;
 };
-
-const heroStats = [
-  { label: "可用渠道", value: "120+" },
-  { label: "最低倍率", value: "0.2x" },
-  { label: "在线率", value: "99.92%" },
-  { label: "余额有效期", value: "永久" },
-];
 
 const capabilities: Capability[] = [
   {
@@ -74,24 +69,6 @@ const operationModules = [
   { icon: LockKeyhole, title: "管理后台", desc: "用户、渠道、模型、分组、订单、公告和系统设置完整闭环。" },
 ];
 
-const routeRows = [
-  { model: "claude-sonnet-4-6", vendor: "Anthropic", status: "online", latency: "212ms", rate: "0.72x", width: "92%" },
-  { model: "gpt-5", vendor: "OpenAI", status: "online", latency: "248ms", rate: "0.88x", width: "78%" },
-  { model: "gemini-2.5-pro", vendor: "Google", status: "busy", latency: "640ms", rate: "0.46x", width: "52%" },
-];
-
-const models = [
-  "Claude Code",
-  "Claude Sonnet 4.6",
-  "Claude Opus 4.7",
-  "GPT-5",
-  "GPT-5 Mini",
-  "GPT-4o",
-  "Gemini 2.5 Pro",
-  "Gemini 2.5 Flash",
-  "Gemini 2.0 Flash",
-];
-
 const faqs = [
   {
     q: "我需要改很多代码吗?",
@@ -112,6 +89,24 @@ const faqs = [
 ];
 
 export default function HomePage() {
+  const { data: publicModels } = useSWR<ModelInfo[]>("/public/models", fetcher, {
+    revalidateOnFocus: false,
+  });
+  const { data: publicStatus } = useSWR<StatusInfo>("/public/status", fetcher, {
+    refreshInterval: 30000,
+    revalidateOnFocus: false,
+  });
+  const upstreams = publicStatus?.upstreams ?? [];
+  const onlineUpstreams = upstreams.filter((item) => item.status === "online").length;
+  const onlineRate = upstreams.length > 0 ? `${Math.round((onlineUpstreams / upstreams.length) * 100)}%` : "-";
+  const heroStats = [
+    { label: "上游通道", value: String(upstreams.length) },
+    { label: "最低倍率", value: "0.2x" },
+    { label: "在线率", value: onlineRate },
+    { label: "公开模型", value: String(publicModels?.length ?? 0) },
+  ];
+  const modelNames = publicModels?.slice(0, 8).map((model) => model.id) ?? [];
+
   return (
     <div className="relative isolate overflow-hidden bg-background">
       <section className="relative z-10 text-foreground">
@@ -183,29 +178,34 @@ export default function HomePage() {
                       <div className="text-xs text-muted-foreground">实时路由</div>
                       <div className="mt-1 text-lg font-semibold">Multi-provider gateway</div>
                     </div>
-                    <Badge className="border border-primary/20 bg-primary/10 text-primary">99.92%</Badge>
+                    <Badge className="border border-primary/20 bg-primary/10 text-primary">{onlineRate}</Badge>
                   </div>
 
                   <div className="mt-5 space-y-3">
-                    {routeRows.map((row) => (
-                      <div key={row.model} className="rounded-lg border bg-card p-3">
+                    {upstreams.length === 0 && (
+                      <div className="rounded-lg border border-dashed bg-card p-6 text-center text-sm text-muted-foreground">
+                        暂无上游状态
+                      </div>
+                    )}
+                    {upstreams.slice(0, 3).map((row) => (
+                      <div key={row.id} className="rounded-lg border bg-card p-3">
                         <div className="flex items-center justify-between gap-3">
                           <div className="min-w-0">
-                            <div className="truncate font-mono text-xs text-foreground/85">{row.model}</div>
-                            <div className="mt-1 text-xs text-muted-foreground">{row.vendor} · {row.rate}</div>
+                            <div className="truncate font-mono text-xs text-foreground/85">{row.name}</div>
+                            <div className="mt-1 text-xs text-muted-foreground">{row.type || "upstream"} · #{row.id}</div>
                           </div>
                           <div className="text-right">
-                            <div className={row.status === "online" ? "text-xs text-primary" : "text-xs text-warning"}>
-                              {row.status}
+                            <div className={row.status === "online" ? "text-xs text-primary" : row.status === "degraded" ? "text-xs text-warning" : "text-xs text-danger"}>
+                              {statusLabel(row.status)}
                             </div>
-                            <div className="mt-1 text-xs text-muted-foreground">{row.latency}</div>
+                            <div className="mt-1 text-xs text-muted-foreground">{row.latencyMs > 0 ? `${row.latencyMs}ms` : "-"}</div>
                           </div>
                         </div>
                         <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-primary/10">
                           <div
                             className="h-full rounded-full"
                             style={{
-                              width: row.width,
+                              width: `${statusLoad(row.status)}%`,
                               backgroundImage: "linear-gradient(90deg, var(--primary), var(--primary-end))",
                             }}
                           />
@@ -221,8 +221,8 @@ export default function HomePage() {
                       <Wallet className="size-4 text-primary" />
                       账户余额
                     </div>
-                    <div className="mt-4 text-3xl font-semibold tabular-nums">$ 2,486.38</div>
-                    <div className="mt-2 text-xs text-muted-foreground">今日消耗 $37.82 · 余额永久有效</div>
+                    <div className="mt-4 text-3xl font-semibold tabular-nums">登录后查看</div>
+                    <div className="mt-2 text-xs text-muted-foreground">余额、消耗和订单来自用户后台接口</div>
                   </div>
 
                   <div className="rounded-lg border bg-muted/30 p-4">
@@ -231,11 +231,11 @@ export default function HomePage() {
                         <Gauge className="size-4 text-primary" />
                         今日请求
                       </span>
-                      <span className="text-primary">+18%</span>
+                      <span className="text-primary">实时统计</span>
                     </div>
                     <div className="mt-4 grid grid-cols-2 gap-3">
-                      <Metric label="Requests" value="48.2K" />
-                      <Metric label="Tokens" value="19.6M" />
+                      <Metric label="Requests" value="登录后查看" />
+                      <Metric label="Tokens" value="登录后查看" />
                     </div>
                   </div>
 
@@ -351,7 +351,12 @@ stream = true`}
         />
 
         <div data-reveal data-delay="200" className="mt-10 grid grid-cols-2 gap-3 md:grid-cols-4">
-          {models.map((model) => (
+          {modelNames.length === 0 && (
+            <div className="col-span-full rounded-lg border border-dashed bg-card px-3 py-8 text-center text-sm text-muted-foreground">
+              暂无公开模型
+            </div>
+          )}
+          {modelNames.map((model) => (
             <div key={model} className="flex h-14 items-center justify-center rounded-lg border bg-card px-3 text-center text-sm font-medium transition-colors hover:border-primary/45">
               {model}
             </div>
@@ -442,6 +447,18 @@ function Metric({ label, value }: { label: string; value: string }) {
       <div className="mt-1 text-lg font-semibold tabular-nums">{value}</div>
     </div>
   );
+}
+
+function statusLabel(status: StatusInfo["upstreams"][number]["status"]) {
+  if (status === "online") return "online";
+  if (status === "degraded") return "degraded";
+  return "offline";
+}
+
+function statusLoad(status: StatusInfo["upstreams"][number]["status"]) {
+  if (status === "online") return 100;
+  if (status === "degraded") return 60;
+  return 8;
 }
 
 function SectionHeading({

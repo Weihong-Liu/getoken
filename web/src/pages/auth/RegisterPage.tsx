@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { apiFetch, defaultPublicSettings, fetcher, setToken, type PublicSettings } from "@/lib/api";
+import { apiFetch, fetcher, setToken, type PublicSettings } from "@/lib/api";
 
 function emailSuffix(email: string): string {
   const trimmed = email.trim().toLowerCase();
@@ -30,12 +30,12 @@ export default function RegisterPage() {
   const [sending, setSending] = useState(false);
   const [cooldown, setCooldown] = useState(0);
   const { data: settings } = useSWR<PublicSettings>("/public/settings", fetcher, {
-    fallbackData: defaultPublicSettings,
     revalidateOnFocus: false,
   });
+  const settingsReady = Boolean(settings);
   const whitelist = settings?.emailSuffixWhitelist ?? [];
   const emailVerifyRequired = settings?.emailVerifyRequired ?? true;
-  const registrationEnabled = settings?.registrationEnabled ?? true;
+  const registrationEnabled = settings?.registrationEnabled === true;
 
   async function onSendCode(email: string) {
     if (!email) {
@@ -151,7 +151,7 @@ export default function RegisterPage() {
           {" "}与{" "}
           <Link to="/privacy" className="hover:text-foreground underline underline-offset-2">隐私政策</Link>
         </p>
-        <Button type="submit" size="lg" className="w-full" disabled={loading || !registrationEnabled}>
+        <Button type="submit" size="lg" className="w-full" disabled={loading || !settingsReady || !registrationEnabled}>
           {loading && <Loader2 className="size-4 animate-spin" />}
           创建账号
         </Button>
