@@ -29,6 +29,30 @@ function asBool(v: unknown, fallback = false): boolean {
   return fallback;
 }
 
+function asStringList(v: unknown): string[] {
+  if (Array.isArray(v)) return v.filter((x): x is string => typeof x === "string");
+  if (typeof v === "string" && v.trim() !== "") return [v];
+  return [];
+}
+
+// Parses the textarea (one suffix per line or comma-separated) into a clean
+// "@domain" list. Empty / malformed entries are dropped; backend re-validates.
+function parseSuffixList(raw: string): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const part of raw.split(/[\s,;]+/)) {
+    let s = part.trim().toLowerCase();
+    if (!s) continue;
+    if (!s.startsWith("@")) s = "@" + s.replace(/^@+/, "");
+    const domain = s.slice(1);
+    if (!domain.includes(".")) continue;
+    if (seen.has(s)) continue;
+    seen.add(s);
+    out.push(s);
+  }
+  return out;
+}
+
 export default function SystemSettingsPage() {
   const { data, mutate } = useSWR<AdminSettings>("/admin/settings", fetcher, {
     fallbackData: demoAdminSettings,
@@ -91,9 +115,11 @@ export default function SystemSettingsPage() {
   async function onSubmitSecurity(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
+    const whitelistRaw = String(fd.get("emailSuffixWhitelist") || "");
     await saveSection("安全", {
       "register.enabled": fd.get("registerEnabled") === "on",
       "register.requireEmail": fd.get("requireEmail") === "on",
+      "register.emailSuffixWhitelist": parseSuffixList(whitelistRaw),
       "turnstile.siteKey": String(fd.get("turnstileKey") || ""),
       "register.ipDailyLimit": Number(fd.get("ipLimit") || 0),
     });
@@ -245,6 +271,18 @@ export default function SystemSettingsPage() {
                     <p className="text-xs text-muted-foreground mt-0.5">注册时强制发送验证码</p>
                   </div>
                   <Switch id="requireEmail" name="requireEmail" defaultChecked={asBool(settings["register.requireEmail"], true)} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="emailSuffixWhitelist">邮箱域名白名单</Label>
+                  <textarea
+                    id="emailSuffixWhitelist"
+                    name="emailSuffixWhitelist"
+                    rows={3}
+                    className="flex w-full rounded-md border bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                    placeholder="@qq.com  @gmail.com（留空 = 不限制）"
+                    defaultValue={asStringList(settings["register.emailSuffixWhitelist"]).join("\n")}
+                  />
+                  <p className="text-xs text-muted-foreground">每行一个，自动补 @ 前缀。留空允许所有域名。</p>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="turnstileKey">Turnstile Site Key</Label>

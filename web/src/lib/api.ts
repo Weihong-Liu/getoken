@@ -324,6 +324,25 @@ export type AdminAnnouncement = {
 
 export type AdminSettings = Record<string, unknown>;
 
+// PublicSettings is what /api/public/settings returns to the login / register
+// pages. Defaults mirror the backend env defaults so the UI degrades sanely if
+// the endpoint is unreachable.
+export type PublicSettings = {
+  registrationEnabled: boolean;
+  emailVerifyRequired: boolean;
+  inviteRequired: boolean;
+  emailSuffixWhitelist: string[];
+  githubOAuthEnabled: boolean;
+};
+
+export const defaultPublicSettings: PublicSettings = {
+  registrationEnabled: true,
+  emailVerifyRequired: true,
+  inviteRequired: false,
+  emailSuffixWhitelist: [],
+  githubOAuthEnabled: false,
+};
+
 export type AuditLog = {
   id: number;
   actorId: number;

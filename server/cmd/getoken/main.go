@@ -3,9 +3,12 @@ package main
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
+	"time"
 
 	"github.com/shopspring/decimal"
 	"go.uber.org/zap"
@@ -18,10 +21,44 @@ import (
 )
 
 func main() {
+	// Internal health probe — invoked by container HEALTHCHECK CMD so we
+	// don't have to ship wget/curl in the distroless image.
+	if len(os.Args) > 1 && os.Args[1] == "healthcheck" {
+		if err := healthcheckSelf(); err != nil {
+			fmt.Fprintln(os.Stderr, "healthcheck:", err)
+			os.Exit(1)
+		}
+		return
+	}
 	if err := run(); err != nil {
 		fmt.Fprintln(os.Stderr, "fatal:", err)
 		os.Exit(1)
 	}
+}
+
+func healthcheckSelf() error {
+	addr := os.Getenv("HTTP_ADDR")
+	if addr == "" {
+		addr = ":3000"
+	}
+	if strings.HasPrefix(addr, ":") {
+		addr = "127.0.0.1" + addr
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 4*time.Second)
+	defer cancel()
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, "http://"+addr+"/healthz", nil)
+	if err != nil {
+		return err
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("status %d", resp.StatusCode)
+	}
+	return nil
 }
 
 func run() error {

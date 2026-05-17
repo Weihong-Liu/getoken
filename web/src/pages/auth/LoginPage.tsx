@@ -1,16 +1,44 @@
 import { useRef, useState } from "react";
+import useSWR from "swr";
 import { Link, useNavigate } from "react-router-dom";
 import { Copy, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { apiFetch, DEMO_LOGIN_EMAIL, DEMO_LOGIN_PASSWORD, setToken } from "@/lib/api";
+import {
+  apiFetch,
+  DEMO_LOGIN_EMAIL,
+  DEMO_LOGIN_PASSWORD,
+  defaultPublicSettings,
+  fetcher,
+  setToken,
+  type PublicSettings,
+} from "@/lib/api";
 
 export default function LoginPage() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
+  const [githubLoading, setGithubLoading] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
+  const { data: settings } = useSWR<PublicSettings>("/public/settings", fetcher, {
+    fallbackData: defaultPublicSettings,
+    revalidateOnFocus: false,
+  });
+  const registrationEnabled = settings?.registrationEnabled ?? true;
+  const githubOAuthEnabled = settings?.githubOAuthEnabled ?? false;
+
+  async function startGithubOAuth() {
+    setGithubLoading(true);
+    try {
+      const res = await apiFetch<{ url: string }>("/auth/github/start", { method: "POST" });
+      window.location.href = res.url;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "GitHub 登录暂未启用";
+      toast.error(msg);
+      setGithubLoading(false);
+    }
+  }
 
   function fillDemoAccount() {
     const form = formRef.current;
@@ -49,8 +77,14 @@ export default function LoginPage() {
     <div className="animate-fade-up">
       <h1 className="text-2xl font-semibold">欢迎回来</h1>
       <p className="mt-2 text-sm text-muted-foreground">
-        还没有账号?{" "}
-        <Link to="/register" className="text-primary hover:underline">立即注册</Link>
+        {registrationEnabled ? (
+          <>
+            还没有账号?{" "}
+            <Link to="/register" className="text-primary hover:underline">立即注册</Link>
+          </>
+        ) : (
+          <>当前未开放注册，如需账号请联系管理员。</>
+        )}
       </p>
 
       <div className="mt-6 rounded-lg border bg-card/80 p-4">
@@ -94,6 +128,8 @@ export default function LoginPage() {
         </Button>
       </form>
 
+      {githubOAuthEnabled && (
+      <>
       <div className="relative my-6">
         <div className="absolute inset-0 flex items-center"><span className="w-full border-t" /></div>
         <div className="relative flex justify-center text-xs uppercase">
@@ -101,10 +137,16 @@ export default function LoginPage() {
         </div>
       </div>
 
-      <Button variant="outline" size="lg" className="w-full" disabled>
-        <svg viewBox="0 0 24 24" className="size-4 fill-current"><path d="M12 .3a12 12 0 0 0-3.8 23.4c.6.1.8-.3.8-.6v-2.1c-3.3.7-4-1.6-4-1.6-.6-1.4-1.4-1.8-1.4-1.8-1.1-.7.1-.7.1-.7 1.2.1 1.9 1.2 1.9 1.2 1.1 1.9 2.9 1.4 3.6 1 .1-.8.4-1.4.8-1.7-2.7-.3-5.5-1.3-5.5-6 0-1.3.5-2.4 1.2-3.2-.1-.3-.5-1.5.1-3.2 0 0 1-.3 3.3 1.2a11.5 11.5 0 0 1 6 0c2.3-1.5 3.3-1.2 3.3-1.2.6 1.7.2 2.9.1 3.2.8.8 1.2 1.9 1.2 3.2 0 4.7-2.8 5.7-5.5 6 .4.4.8 1.1.8 2.3v3.4c0 .3.2.7.8.6A12 12 0 0 0 12 .3"/></svg>
-        使用 GitHub 登录(待接入)
+      <Button variant="outline" size="lg" className="w-full" disabled={githubLoading} onClick={startGithubOAuth}>
+        {githubLoading ? (
+          <Loader2 className="size-4 animate-spin" />
+        ) : (
+          <svg viewBox="0 0 24 24" className="size-4 fill-current"><path d="M12 .3a12 12 0 0 0-3.8 23.4c.6.1.8-.3.8-.6v-2.1c-3.3.7-4-1.6-4-1.6-.6-1.4-1.4-1.8-1.4-1.8-1.1-.7.1-.7.1-.7 1.2.1 1.9 1.2 1.9 1.2 1.1 1.9 2.9 1.4 3.6 1 .1-.8.4-1.4.8-1.7-2.7-.3-5.5-1.3-5.5-6 0-1.3.5-2.4 1.2-3.2-.1-.3-.5-1.5.1-3.2 0 0 1-.3 3.3 1.2a11.5 11.5 0 0 1 6 0c2.3-1.5 3.3-1.2 3.3-1.2.6 1.7.2 2.9.1 3.2.8.8 1.2 1.9 1.2 3.2 0 4.7-2.8 5.7-5.5 6 .4.4.8 1.1.8 2.3v3.4c0 .3.2.7.8.6A12 12 0 0 0 12 .3"/></svg>
+        )}
+        使用 GitHub 登录
       </Button>
+      </>
+      )}
     </div>
   );
 }

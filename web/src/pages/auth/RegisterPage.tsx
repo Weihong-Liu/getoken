@@ -1,11 +1,27 @@
 import { useState } from "react";
+import useSWR from "swr";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { apiFetch, setToken } from "@/lib/api";
+import { apiFetch, defaultPublicSettings, fetcher, setToken, type PublicSettings } from "@/lib/api";
+
+function emailSuffix(email: string): string {
+  const trimmed = email.trim().toLowerCase();
+  const at = trimmed.lastIndexOf("@");
+  if (at <= 0 || at === trimmed.length - 1) return "";
+  const domain = trimmed.slice(at + 1);
+  return domain.includes("@") ? "" : `@${domain}`;
+}
+
+function isSuffixAllowed(email: string, whitelist: string[]): boolean {
+  if (whitelist.length === 0) return true;
+  const suffix = emailSuffix(email);
+  if (!suffix) return false;
+  return whitelist.includes(suffix);
+}
 
 export default function RegisterPage() {
   const navigate = useNavigate();
@@ -13,10 +29,21 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false);
   const [sending, setSending] = useState(false);
   const [cooldown, setCooldown] = useState(0);
+  const { data: settings } = useSWR<PublicSettings>("/public/settings", fetcher, {
+    fallbackData: defaultPublicSettings,
+    revalidateOnFocus: false,
+  });
+  const whitelist = settings?.emailSuffixWhitelist ?? [];
+  const emailVerifyRequired = settings?.emailVerifyRequired ?? true;
+  const registrationEnabled = settings?.registrationEnabled ?? true;
 
   async function onSendCode(email: string) {
     if (!email) {
       toast.error("请先输入邮箱");
+      return;
+    }
+    if (!isSuffixAllowed(email, whitelist)) {
+      toast.error(`邮箱域名不在允许列表内：${whitelist.join(", ")}`);
       return;
     }
     setSending(true);
@@ -47,6 +74,10 @@ export default function RegisterPage() {
     const password = String(fd.get("password"));
     const emailCode = String(fd.get("code"));
     const inviteCode = String(fd.get("inviteCode") ?? "");
+    if (!isSuffixAllowed(email, whitelist)) {
+      toast.error(`邮箱域名不在允许列表内：${whitelist.join(", ")}`);
+      return;
+    }
     setLoading(true);
     try {
       const res = await apiFetch<{ token: string }>("/auth/register", {
@@ -71,15 +102,27 @@ export default function RegisterPage() {
         <Link to="/login" className="text-primary hover:underline">立即登录</Link>
       </p>
 
+      {!registrationEnabled && (
+        <div className="mt-6 rounded-lg border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive">
+          当前未开放注册，请联系管理员开通。
+        </div>
+      )}
+
       <form onSubmit={onSubmit} className="mt-8 space-y-4">
         <div className="space-y-2">
           <Label htmlFor="email">邮箱</Label>
           <Input id="email" name="email" type="email" autoComplete="email" required placeholder="you@example.com" />
+          {whitelist.length > 0 && (
+            <p className="text-xs text-muted-foreground">
+              仅允许以下域名注册：{whitelist.join("、")}
+            </p>
+          )}
         </div>
+        {emailVerifyRequired && (
         <div className="space-y-2">
           <Label htmlFor="code">验证码</Label>
           <div className="flex gap-2">
-            <Input id="code" name="code" required placeholder="6 位数字" />
+            <Input id="code" name="code" required={emailVerifyRequired} placeholder="6 位数字" />
             <Button
               type="button"
               variant="outline"
@@ -93,6 +136,7 @@ export default function RegisterPage() {
             </Button>
           </div>
         </div>
+        )}
         <div className="space-y-2">
           <Label htmlFor="password">密码</Label>
           <Input id="password" name="password" type="password" autoComplete="new-password" minLength={8} required placeholder="至少 8 位" />
@@ -107,7 +151,7 @@ export default function RegisterPage() {
           {" "}与{" "}
           <Link to="/privacy" className="hover:text-foreground underline underline-offset-2">隐私政策</Link>
         </p>
-        <Button type="submit" size="lg" className="w-full" disabled={loading}>
+        <Button type="submit" size="lg" className="w-full" disabled={loading || !registrationEnabled}>
           {loading && <Loader2 className="size-4 animate-spin" />}
           创建账号
         </Button>
