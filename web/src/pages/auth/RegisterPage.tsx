@@ -8,19 +8,30 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { apiFetch, fetcher, setToken, type PublicSettings } from "@/lib/api";
 
-function emailSuffix(email: string): string {
+// Extracts the lowercased bare domain (no "@" prefix) from an email.
+// Returns "" if the input has no usable domain part.
+function emailDomain(email: string): string {
   const trimmed = email.trim().toLowerCase();
   const at = trimmed.lastIndexOf("@");
   if (at <= 0 || at === trimmed.length - 1) return "";
   const domain = trimmed.slice(at + 1);
-  return domain.includes("@") ? "" : `@${domain}`;
+  return domain.includes("@") ? "" : domain;
+}
+
+// The whitelist on the wire may carry entries in either "domain" or "@domain"
+// form depending on how the setting was seeded (DB fixtures use bare; the admin
+// settings page writes "@domain"). Strip any leading "@" so the comparison
+// works regardless of the source.
+function normalizeDomain(s: string): string {
+  return s.trim().toLowerCase().replace(/^@+/, "");
 }
 
 function isSuffixAllowed(email: string, whitelist: string[]): boolean {
-  if (whitelist.length === 0) return true;
-  const suffix = emailSuffix(email);
-  if (!suffix) return false;
-  return whitelist.includes(suffix);
+  const list = whitelist.map(normalizeDomain).filter(Boolean);
+  if (list.length === 0) return true;
+  const domain = emailDomain(email);
+  if (!domain) return false;
+  return list.includes(domain);
 }
 
 export default function RegisterPage() {
@@ -33,7 +44,9 @@ export default function RegisterPage() {
     revalidateOnFocus: false,
   });
   const settingsReady = Boolean(settings);
-  const whitelist = settings?.emailSuffixWhitelist ?? [];
+  const whitelist = (settings?.emailSuffixWhitelist ?? [])
+    .map(normalizeDomain)
+    .filter(Boolean);
   const emailVerifyRequired = settings?.emailVerifyRequired ?? true;
   const registrationEnabled = settings?.registrationEnabled === true;
 
